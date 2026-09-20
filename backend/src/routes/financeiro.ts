@@ -10,15 +10,22 @@ const pagamentoSchema = z.object({
   pagoEm: z.string().date().optional(),
 });
 
-function resumoFinanceiro(internacao: { entradaEm: Date; dataSaida: Date | null; baixa: boolean; leito: { valorDiaria: number } | null; medicacoes: { valorDose: number; dosesAplicadas: number }[]; pagamentos: { valor: number }[] }) {
+function resumoFinanceiro(internacao: { entradaEm: Date; dataSaida: Date | null; baixa: boolean; quantidadeDiarias: number; valorDiarias: number; leito: { valorDiaria: number } | null; medicacoes: { valorDose: number; dosesAplicadas: number }[]; pagamentos: { valor: number }[] }) {
+  const valorMedicacoes = internacao.medicacoes.reduce((total, medicacao) => total + medicacao.valorDose * medicacao.dosesAplicadas, 0);
+  const valorPago = internacao.pagamentos.reduce((total, pagamento) => total + pagamento.valor, 0);
+
+  // Internação encerrada: usa os valores congelados na quitação, não o preço atual do leito.
+  if (internacao.baixa) {
+    const valorTotal = internacao.valorDiarias + valorMedicacoes;
+    return { diarias: internacao.quantidadeDiarias, valorDiarias: internacao.valorDiarias, valorMedicacoes, valorTotal, valorPago, saldo: Math.max(0, valorTotal - valorPago), encerrada: true };
+  }
+
   const hoje = new Date();
   const fim = internacao.dataSaida && internacao.dataSaida < hoje ? internacao.dataSaida : hoje;
   const diarias = Math.max(1, Math.ceil((fim.getTime() - internacao.entradaEm.getTime()) / 86_400_000));
   const valorDiarias = diarias * (internacao.leito?.valorDiaria ?? 0);
-  const valorMedicacoes = internacao.medicacoes.reduce((total, medicacao) => total + medicacao.valorDose * medicacao.dosesAplicadas, 0);
   const valorTotal = valorDiarias + valorMedicacoes;
-  const valorPago = internacao.pagamentos.reduce((total, pagamento) => total + pagamento.valor, 0);
-  return { diarias, valorDiarias, valorMedicacoes, valorTotal, valorPago, saldo: Math.max(0, valorTotal - valorPago), encerrada: internacao.baixa };
+  return { diarias, valorDiarias, valorMedicacoes, valorTotal, valorPago, saldo: Math.max(0, valorTotal - valorPago), encerrada: false };
 }
 
 function calcularCobranca(internacao: { entradaEm: Date; leito: { valorDiaria: number } | null; medicacoes: { valorDose: number; dosesAplicadas: number }[]; pagamentos: { valor: number }[] }, encerradaEm: Date) {
