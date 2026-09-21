@@ -1,12 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, BedDouble, CalendarDays, ChevronDown, ChevronUp, CircleDollarSign, Plus, Save, Search, Trash2, X } from 'lucide-react';
-import { Internacao, InternacaoStatus, Medicacao, NovaInternacao } from '@/types/internacao';
-import { resolverProximaMedicacao } from '@/lib/horarios';
+import { BedDouble, CalendarDays, CircleDollarSign, Search, X } from 'lucide-react';
+import { Internacao, InternacaoStatus, NovaInternacao } from '@/types/internacao';
+import { InternacaoCard } from './internacao-card';
 import { InternacaoForm } from './internacao-form';
-import { StatusBadge } from './status-badge';
 
 const STATUS_FILTROS: { value: InternacaoStatus; label: string }[] = [
   { value: 'critico',    label: 'Críticos'    },
@@ -20,7 +18,6 @@ export function InternacoesBoard() {
   const [error, setError]                 = useState<string | null>(null);
   const [busca, setBusca]                 = useState('');
   const [filtroStatus, setFiltroStatus]   = useState<InternacaoStatus | null>(null);
-  const [internacaoExpandida, setInternacaoExpandida] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/internacoes')
@@ -63,12 +60,6 @@ export function InternacoesBoard() {
 
   function toggleStatus(status: InternacaoStatus) {
     setFiltroStatus((prev) => (prev === status ? null : status));
-  }
-
-  function atualizarMedicacoes(internacaoId: string, medicacoes: Medicacao[]) {
-    setInternacoes((current) => current.map((internacao) => (
-      internacao.id === internacaoId ? { ...internacao, medicacoes } : internacao
-    )));
   }
 
   return (
@@ -122,133 +113,18 @@ export function InternacoesBoard() {
           )}
         </div>
 
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-          <table className="w-full min-w-[900px] border-collapse text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-              <tr>
-                <th className="px-5 py-3">Paciente</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Leito</th>
-                <th className="px-5 py-3">Entrada</th>
-                <th className="px-5 py-3">Próxima medicação</th>
-                <th className="px-5 py-3">Diárias</th>
-                <th className="w-14 px-3 py-3"><span className="sr-only">Abrir detalhes</span></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {loading && <TabelaMensagem message="Carregando internações..." />}
-              {error && <TabelaMensagem message={error} erro />}
-              {!loading && !error && internacoesFiltradas.length === 0 && (
-                <TabelaMensagem message={busca || filtroStatus ? 'Nenhum resultado para os filtros aplicados.' : 'Nenhuma internação ativa.'} />
-              )}
-              {!loading && !error && internacoesFiltradas.map((internacao) => (
-                <LinhaInternacao
-                  key={internacao.id}
-                  internacao={internacao}
-                  expandida={internacaoExpandida === internacao.id}
-                  onAlternarMedicacoes={() => setInternacaoExpandida((atual) => atual === internacao.id ? null : internacao.id)}
-                  onAtualizarMedicacoes={(medicacoes) => atualizarMedicacoes(internacao.id, medicacoes)}
-                />
-              ))}
-            </tbody>
-          </table>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {loading && <p className="text-sm text-slate-500">Carregando internações...</p>}
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          {!loading && !error && internacoesFiltradas.length === 0 && (
+            <p className="text-sm text-slate-500">{busca || filtroStatus ? 'Nenhum resultado para os filtros aplicados.' : 'Nenhuma internação ativa.'}</p>
+          )}
+          {!loading && !error && internacoesFiltradas.map((internacao) => (
+            <InternacaoCard key={internacao.id} internacao={internacao} />
+          ))}
         </div>
       </section>
     </div>
-  );
-}
-
-type LinhaInternacaoProps = {
-  internacao: Internacao;
-  expandida: boolean;
-  onAlternarMedicacoes: () => void;
-  onAtualizarMedicacoes: (medicacoes: Medicacao[]) => void;
-};
-
-function LinhaInternacao({ internacao, expandida, onAlternarMedicacoes, onAtualizarMedicacoes }: LinhaInternacaoProps) {
-  const entrada = new Date(internacao.entradaEm).toLocaleString('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  });
-
-  return <>
-    <tr className="transition hover:bg-moss/5">
-      <td className="px-5 py-4"><p className="font-semibold text-slate-900">{internacao.petNome}</p><p className="mt-0.5 text-xs text-slate-500">{internacao.especie} · Tutor: {internacao.tutorNome}</p></td>
-      <td className="px-5 py-4"><StatusBadge status={internacao.status} /></td>
-      <td className="px-5 py-4">{internacao.leito ? `${internacao.leito.id} - ${internacao.leito.nome}` : 'Não definido'}</td>
-      <td className="whitespace-nowrap px-5 py-4">{entrada}</td>
-      <td className="px-5 py-4">{resolverProximaMedicacao(internacao)}</td>
-      <td className="whitespace-nowrap px-5 py-4">{internacao.quantidadeDiarias} · R$ {internacao.valorDiarias.toFixed(2).replace('.', ',')}</td>
-      <td className="px-3 py-4 text-right"><div className="flex justify-end gap-1">
-        <button type="button" onClick={onAlternarMedicacoes} aria-label={`Gerenciar medicações de ${internacao.petNome}`} title="Gerenciar medicações" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-moss transition hover:bg-moss/10">
-          {expandida ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
-        </button>
-        <Link href={`/internacoes/${internacao.id}`} aria-label={`Abrir internação de ${internacao.petNome}`} title={`Abrir internação de ${internacao.petNome}`} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-moss transition hover:bg-moss/10"><ArrowUpRight size={17} /></Link>
-      </div></td>
-    </tr>
-    {expandida && <tr className="bg-slate-50"><td colSpan={7} className="px-5 py-4"><TabelaMedicacoes internacao={internacao} onAtualizar={onAtualizarMedicacoes} /></td></tr>}
-  </>;
-}
-
-const NOVA_MEDICACAO: Omit<Medicacao, 'id' | 'horarios'> = {
-  nome: '', descricao: '', cor: 'bg-teal-500', via: 'Oral', unidade: 'mg', quantidade: 1, valorDose: 0, dosesAplicadas: 0, primeiroHorario: '08:00', frequenciaHoras: 8,
-};
-
-function TabelaMedicacoes({ internacao, onAtualizar }: { internacao: Internacao; onAtualizar: (medicacoes: Medicacao[]) => void }) {
-  const [novaMedicacao, setNovaMedicacao] = useState(NOVA_MEDICACAO);
-  const [salvando, setSalvando] = useState<string | null>(null);
-
-  function editarLocal(medId: string, campo: keyof Medicacao, valor: string | number) {
-    onAtualizar(internacao.medicacoes.map((med) => med.id === medId ? { ...med, [campo]: valor } : med));
-  }
-
-  async function salvar(medicacao: Omit<Medicacao, 'id' | 'horarios'>, medId?: string) {
-    if (!medicacao.nome.trim()) return;
-    const chave = medId ?? 'nova';
-    setSalvando(chave);
-    const url = `/api/internacoes/${internacao.id}/medicacoes${medId ? `/${medId}` : ''}`;
-    const resposta = await fetch(url, { method: medId ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(medicacao) });
-    if (resposta.ok) {
-      const salva: Medicacao = await resposta.json();
-      onAtualizar(medId ? internacao.medicacoes.map((med) => med.id === medId ? salva : med) : [...internacao.medicacoes, salva]);
-      if (!medId) setNovaMedicacao(NOVA_MEDICACAO);
-    }
-    setSalvando(null);
-  }
-
-  async function remover(medId: string) {
-    setSalvando(medId);
-    const resposta = await fetch(`/api/internacoes/${internacao.id}/medicacoes/${medId}`, { method: 'DELETE' });
-    if (resposta.ok) onAtualizar(internacao.medicacoes.filter((med) => med.id !== medId));
-    setSalvando(null);
-  }
-
-  return <div className="rounded-md border border-slate-200 bg-white p-4">
-    <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold text-slate-800">Medicações de {internacao.petNome}</h3><span className="text-xs text-slate-500">{internacao.medicacoes.length} registrada(s)</span></div>
-    <table className="w-full min-w-[1120px] text-left text-xs"><thead className="text-slate-500"><tr><th className="pb-2">Medicamento</th><th className="pb-2">Descrição livre</th><th className="pb-2">Quantidade</th><th className="pb-2">Unidade</th><th className="pb-2">Via</th><th className="pb-2">Valor/dose</th><th className="pb-2">Aplicadas</th><th className="pb-2">Primeira dose</th><th className="pb-2">Frequência</th><th className="w-20 pb-2"><span className="sr-only">Ações</span></th></tr></thead>
-      <tbody className="divide-y divide-slate-100">
-        {internacao.medicacoes.map((med) => <LinhaMedicacao key={med.id} medicacao={med} salvando={salvando === med.id} onEditar={editarLocal} onSalvar={() => salvar(med, med.id)} onRemover={() => remover(med.id)} />)}
-        <LinhaMedicacao medicacao={novaMedicacao} salvando={salvando === 'nova'} nova onEditar={(_, campo, valor) => setNovaMedicacao((atual) => ({ ...atual, [campo]: valor }))} onSalvar={() => salvar(novaMedicacao)} />
-      </tbody>
-    </table>
-  </div>;
-}
-
-type LinhaMedicacaoProps = { medicacao: Omit<Medicacao, 'id' | 'horarios'> & { id?: string }; salvando: boolean; nova?: boolean; onEditar: (id: string, campo: keyof Medicacao, valor: string | number) => void; onSalvar: () => void; onRemover?: () => void };
-
-function LinhaMedicacao({ medicacao, salvando, nova, onEditar, onSalvar, onRemover }: LinhaMedicacaoProps) {
-  const classes = 'w-full rounded border border-slate-200 px-2 py-1.5 outline-none focus:border-moss';
-  const editar = (campo: keyof Medicacao, valor: string | number) => onEditar(medicacao.id ?? '', campo, valor);
-  return <tr><td className="py-2 pr-2"><input value={medicacao.nome} onChange={(event) => editar('nome', event.target.value)} placeholder="Nova medicação" className={classes} /></td><td className="py-2 pr-2"><input value={medicacao.descricao} onChange={(event) => editar('descricao', event.target.value)} placeholder="Instruções ou observações" className={classes} /></td><td className="py-2 pr-2"><input type="number" min="0.1" step="0.1" value={medicacao.quantidade} onChange={(event) => editar('quantidade', Number(event.target.value))} className={classes} /></td><td className="py-2 pr-2"><input value={medicacao.unidade} onChange={(event) => editar('unidade', event.target.value)} className={classes} /></td><td className="py-2 pr-2"><input value={medicacao.via} onChange={(event) => editar('via', event.target.value)} className={classes} /></td><td className="py-2 pr-2"><input type="number" min="0" step="0.01" value={medicacao.valorDose} onChange={(event) => editar('valorDose', Number(event.target.value))} className={classes} /></td><td className="py-2 pr-2"><input type="number" min="0" step="1" value={medicacao.dosesAplicadas} onChange={(event) => editar('dosesAplicadas', Number(event.target.value))} className={classes} /></td><td className="py-2 pr-2"><input type="time" value={medicacao.primeiroHorario} onChange={(event) => editar('primeiroHorario', event.target.value)} className={classes} /></td><td className="py-2 pr-2"><select value={medicacao.frequenciaHoras} onChange={(event) => editar('frequenciaHoras', Number(event.target.value))} className={classes}><option value={4}>4 h</option><option value={6}>6 h</option><option value={8}>8 h</option><option value={12}>12 h</option><option value={24}>24 h</option></select></td><td className="py-2 text-right"><div className="flex justify-end gap-1"><button type="button" disabled={salvando || !medicacao.nome.trim()} onClick={onSalvar} title={nova ? 'Adicionar medicação' : 'Salvar medicação'} className="inline-flex h-8 w-8 items-center justify-center rounded text-moss hover:bg-moss/10 disabled:opacity-40">{nova ? <Plus size={16} /> : <Save size={16} />}</button>{!nova && <button type="button" disabled={salvando} onClick={onRemover} title="Remover medicação" className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-400 hover:bg-rose-50 hover:text-rose-600 disabled:opacity-40"><Trash2 size={16} /></button>}</div></td></tr>;
-}
-
-function TabelaMensagem({ message, erro = false }: { message: string; erro?: boolean }) {
-  return (
-    <tr>
-      <td colSpan={7} className={`px-5 py-8 text-center ${erro ? 'text-red-500' : 'text-slate-500'}`}>
-        {message}
-      </td>
-    </tr>
   );
 }
 
