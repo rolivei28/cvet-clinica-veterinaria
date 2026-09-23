@@ -8,8 +8,9 @@ type MedicacaoCobrada = { id: string; nome: string; quantidade: number; unidade:
 type ItemFinanceiro = {
   id: string;
   petNome: string;
+  tutorNome: string;
   leito: { nome: string } | null;
-  pet: { tutor: { nome: string; telefone: string } } | null;
+  pet: { tutor: { telefone: string } } | null;
   medicacoes: MedicacaoCobrada[];
   financeiro: { diarias: number; valorDiarias: number; valorMedicacoes: number; valorTotal: number; valorPago: number; saldo: number; encerrada: boolean };
 };
@@ -48,7 +49,7 @@ export default function FinanceiroPage() {
     {erro && <p role="alert" className="text-sm font-medium text-red-600">{erro}</p>}
     <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"><div className="divide-y divide-slate-100">
       {internacoes.map((item) => <article key={item.id} className="grid gap-4 p-5 lg:grid-cols-[1fr_auto] lg:items-start">
-        <div><div className="flex items-center gap-2"><WalletCards size={18} className="text-moss" /><h2 className="font-semibold text-ink">{item.petNome}</h2></div><p className="mt-1 text-sm text-slate-500">Tutor: {item.pet?.tutor.nome ?? 'Não informado'} · {item.pet?.tutor.telefone ?? ''}</p><p className="mt-1 text-sm text-slate-500">{item.leito?.nome ?? 'Sem leito'} · {item.financeiro.diarias} diária(s) · {item.financeiro.encerrada ? 'Internação encerrada' : 'Em internação'}</p><MedicacoesAplicadas medicacoes={item.medicacoes} /></div>
+        <div><div className="flex items-center gap-2"><WalletCards size={18} className="text-moss" /><h2 className="font-semibold text-ink">{item.petNome}</h2></div><p className="mt-1 text-sm text-slate-500">Tutor: {item.tutorNome} · {item.pet?.tutor.telefone ?? ''}</p><p className="mt-1 text-sm text-slate-500">{item.leito?.nome ?? 'Sem leito'} · {item.financeiro.diarias} diária(s) · {item.financeiro.encerrada ? 'Internação encerrada' : 'Em internação'}</p><MedicacoesAplicadas medicacoes={item.medicacoes} /></div>
         <div className="grid gap-2 text-sm lg:min-w-80"><p>Diárias: <strong>{money(item.financeiro.valorDiarias)}</strong> · Medicações: <strong>{money(item.financeiro.valorMedicacoes)}</strong></p><p>Total: <strong>{money(item.financeiro.valorTotal)}</strong> · Pago: {money(item.financeiro.valorPago)} · Saldo: <strong className="text-moss">{money(item.financeiro.saldo)}</strong></p>{!item.financeiro.encerrada && item.financeiro.saldo > 0 && <form onSubmit={(event) => registrarPagamento(event, item.id)} className="grid gap-2 sm:grid-cols-3"><select name="formaPagamentoId" required className="rounded-lg border border-slate-300 px-2 py-2 text-sm"><option value="">Pagamento</option>{formas.map((forma) => <option key={forma.id} value={forma.id}>{forma.nome}</option>)}</select><input name="valor" type="number" min="0.01" step="0.01" value={item.financeiro.saldo} readOnly required className="rounded-lg border border-slate-300 bg-slate-50 px-2 py-2 text-sm text-slate-600" /><input name="pagoEm" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required className="rounded-lg border border-slate-300 px-2 py-2 text-sm" /><button className="rounded-lg bg-moss px-3 py-2 text-sm font-semibold text-white sm:col-span-3">Quitar e encerrar internação</button></form>}</div>
       </article>)}
       {internacoes.length === 0 && <p className="p-8 text-center text-sm text-slate-500">Nenhuma internação para exibir.</p>}
