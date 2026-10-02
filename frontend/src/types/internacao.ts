@@ -30,7 +30,8 @@ export type Internacao = {
   tutorTelefone?: string;
   tutorCpf?: string;
   leitoId?: string;
-  leito?: { id: string; nome: string; tipo: 'N' | 'I'; valorDiaria: number } | null;
+  leito?: { id: string; nome: string; tipo: 'N' | 'I' } | null;
+  pesoMomento?: number | null;
   entradaEm: string;
   dataSaida?: string;
   descricao: string;
@@ -45,4 +46,32 @@ export type Internacao = {
 
 export type NovaInternacao = Omit<Internacao, 'id' | 'quantidadeDiarias' | 'valorDiarias' | 'leito' | 'medicacoes' | 'baixa'> & {
   medicacoes: MedicacaoInput[];
+};
+
+export type TipoRegistroProntuario = 'EVOLUCAO' | 'PROCEDIMENTO' | 'EXAME' | 'CURATIVO' | 'OCORRENCIA' | 'MEDICACAO_ADMINISTRADA';
+
+export type RegistroProntuario = {
+  id: string;
+  petId: string;
+  internacaoId?: string | null;
+  tipo: TipoRegistroProntuario;
+  titulo: string;
+  descricao: string;
+  temperatura?: number | null;
+  frequenciaCardiaca?: number | null;
+  frequenciaRespiratoria?: number | null;
+  responsavel: string;
+  dataHora: string;
+  medicacaoId?: string | null;
+  horarioProgramado?: string | null;
+  createdAt?: string;
+};
+
+export type FaixaPreco = {
+  id: string;
+  tipoLeito: 'NORMAL' | 'UTI';
+  pesoMin: number;
+  pesoMax: number;
+  descricao: string;
+  valorDiaria: number;
 };

@@ -5,13 +5,13 @@ import { Pencil, Plus, Save, Search, Trash2, UserRound, UsersRound, X } from 'lu
 import { AutocompleteSelect } from '@/components/autocomplete-select';
 
 type EspeciePet = 'CANINO' | 'FELINO' | 'OUTROS';
-type Pet = { id?: string; nome: string; especie: EspeciePet; raca: string | null; dataNascimento: string | null };
+type Pet = { id?: string; nome: string; especie: EspeciePet; raca: string | null; peso?: number | null; dataNascimento: string | null };
 type Tutor = { id: string; nome: string; telefone: string; cpf: string | null; email: string | null; pets: Pet[] };
 type Raca = { id: string; nome: string; especie: EspeciePet; grupoFci: number | null };
-type PetForm = { id?: string; nome: string; especie: EspeciePet; raca: string; dataNascimento: string };
+type PetForm = { id?: string; nome: string; especie: EspeciePet; raca: string; peso: string; dataNascimento: string };
 
 const emptyForm = { nome: '', telefone: '', cpf: '', email: '' };
-const emptyPet = (): PetForm => ({ nome: '', especie: 'CANINO', raca: '', dataNascimento: '' });
+const emptyPet = (): PetForm => ({ nome: '', especie: 'CANINO', raca: '', peso: '', dataNascimento: '' });
 const especieLabel: Record<EspeciePet, string> = { CANINO: 'Canino', FELINO: 'Felino', OUTROS: 'Outros' };
 
 export default function TutoresPage() {
@@ -59,7 +59,7 @@ export default function TutoresPage() {
 
   function editarTutor(tutor: Tutor) {
     setForm({ nome: tutor.nome, telefone: tutor.telefone, cpf: tutor.cpf ?? '', email: tutor.email ?? '' });
-    setPets(tutor.pets.map((pet) => ({ id: pet.id, nome: pet.nome, especie: pet.especie, raca: pet.raca ?? '', dataNascimento: pet.dataNascimento?.slice(0, 10) ?? '' })));
+    setPets(tutor.pets.map((pet) => ({ id: pet.id, nome: pet.nome, especie: pet.especie, raca: pet.raca ?? '', peso: pet.peso != null ? String(pet.peso) : '', dataNascimento: pet.dataNascimento?.slice(0, 10) ?? '' })));
     setEditandoId(tutor.id);
     setErro('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -73,7 +73,10 @@ export default function TutoresPage() {
       const response = await fetch(editandoId ? `/api/tutores/${editandoId}` : '/api/tutores', {
         method: editandoId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, pets }),
+        body: JSON.stringify({
+          ...form,
+          pets: pets.map((p) => ({ ...p, peso: p.peso ? Number(p.peso) : null })),
+        }),
       });
       const data = await response.json();
       if (!response.ok) { setErro(data.message ?? 'Não foi possível salvar o tutor.'); return; }
@@ -115,7 +118,7 @@ export default function TutoresPage() {
 
       <section className="overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-base font-semibold text-ink">Base de tutores</h2><p className="text-xs text-slate-500">{tutoresFiltrados.length} registro(s) encontrado(s)</p></div><div className="relative w-full sm:w-80"><Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={busca} onFocus={() => setFocoBusca(true)} onBlur={() => setFocoBusca(false)} onChange={(event) => { setBusca(event.target.value); setFocoBusca(true); }} placeholder="Buscar tutor, telefone ou pet" className="h-9 w-full rounded-md border border-slate-300 pl-8 pr-8 text-sm outline-none focus:border-moss focus:ring-2 focus:ring-moss/15" />{busca && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setBusca('')} title="Limpar busca" className="absolute right-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded text-slate-400 hover:bg-slate-100"><X size={15} /></button>}{focoBusca && sugestoes.length > 0 && <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg">{sugestoes.map((tutor) => <button key={tutor.id} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { setBusca(tutor.nome); setFocoBusca(false); editarTutor(tutor); }} className="w-full px-3 py-2 text-left hover:bg-moss/5"><span className="block text-sm font-medium text-ink">{tutor.nome}</span><span className="block text-xs text-slate-500">{tutor.pets.map((pet) => pet.nome).join(' · ') || 'Sem pets'} · {tutor.telefone}</span></button>)}</div>}</div></div>
-        <div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-slate-50 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500"><tr><th className="px-4 py-2.5">Tutor</th><th className="px-4 py-2.5">Contato</th><th className="px-4 py-2.5">Pets</th><th className="w-20 px-3 py-2.5"><span className="sr-only">Ações</span></th></tr></thead><tbody className="divide-y divide-slate-100">{tutoresFiltrados.map((tutor) => <tr key={tutor.id} className="hover:bg-slate-50"><td className="px-4 py-3 font-medium text-ink">{tutor.nome}<p className="mt-0.5 text-xs font-normal text-slate-500">{tutor.cpf || 'CPF não informado'}</p></td><td className="px-4 py-3 text-slate-600">{tutor.telefone}<p className="mt-0.5 text-xs text-slate-500">{tutor.email || 'E-mail não informado'}</p></td><td className="px-4 py-3"><div className="flex flex-wrap gap-1.5">{tutor.pets.length ? tutor.pets.map((pet) => <span key={pet.id} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-600">{pet.nome} <span className="text-slate-400">{especieLabel[pet.especie]}</span></span>) : <span className="text-xs text-slate-400">Sem pets</span>}</div></td><td className="px-3 py-3"><div className="flex justify-end gap-1"><IconButton icon={<Pencil size={16} />} label={`Editar ${tutor.nome}`} onClick={() => editarTutor(tutor)} /><IconButton icon={<Trash2 size={16} />} label={`Excluir ${tutor.nome}`} onClick={() => excluirTutor(tutor)} destructive /></div></td></tr>)}{tutoresFiltrados.length === 0 && <tr><td colSpan={4} className="px-4 py-16 text-center"><UsersRound size={26} className="mx-auto mb-2 text-slate-300" /><p className="text-sm text-slate-500">Nenhum tutor encontrado.</p></td></tr>}</tbody></table></div>
+        <div className="overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-slate-50 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500"><tr><th className="px-4 py-2.5">Tutor</th><th className="px-4 py-2.5">Contato</th><th className="px-4 py-2.5">Pets</th><th className="w-20 px-3 py-2.5"><span className="sr-only">Ações</span></th></tr></thead><tbody className="divide-y divide-slate-100">{tutoresFiltrados.map((tutor) => <tr key={tutor.id} className="hover:bg-slate-50"><td className="px-4 py-3 font-medium text-ink">{tutor.nome}<p className="mt-0.5 text-xs font-normal text-slate-500">{tutor.cpf || 'CPF não informado'}</p></td><td className="px-4 py-3 text-slate-600">{tutor.telefone}<p className="mt-0.5 text-xs text-slate-500">{tutor.email || 'E-mail não informado'}</p></td><td className="px-4 py-3"><div className="flex flex-wrap gap-1.5">{tutor.pets.length ? tutor.pets.map((pet) => <span key={pet.id} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-600">{pet.nome} {pet.peso ? <strong className="text-moss font-medium">({pet.peso}kg)</strong> : ''} <span className="text-slate-400">{especieLabel[pet.especie]}</span></span>) : <span className="text-xs text-slate-400">Sem pets</span>}</div></td><td className="px-3 py-3"><div className="flex justify-end gap-1"><IconButton icon={<Pencil size={16} />} label={`Editar ${tutor.nome}`} onClick={() => editarTutor(tutor)} /><IconButton icon={<Trash2 size={16} />} label={`Excluir ${tutor.nome}`} onClick={() => excluirTutor(tutor)} destructive /></div></td></tr>)}{tutoresFiltrados.length === 0 && <tr><td colSpan={4} className="px-4 py-16 text-center"><UsersRound size={26} className="mx-auto mb-2 text-slate-300" /><p className="text-sm text-slate-500">Nenhum tutor encontrado.</p></td></tr>}</tbody></table></div>
       </section>
     </div>
   </main>;
@@ -123,7 +126,27 @@ export default function TutoresPage() {
 
 function PetEditor({ pet, index, racas, removivel, onChange, onRemove }: { pet: PetForm; index: number; racas: Raca[]; removivel: boolean; onChange: (index: number, patch: Partial<PetForm>) => void; onRemove: () => void }) {
   const racasDaEspecie = racas.filter((raca) => raca.especie === pet.especie);
-  return <fieldset className="grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-2.5"><div className="flex items-center justify-between"><legend className="text-xs font-semibold text-slate-600">Pet {index + 1}</legend>{removivel && <IconButton icon={<Trash2 size={14} />} label="Remover pet" onClick={onRemove} destructive />}</div><Field label="Nome" value={pet.nome} onChange={(nome) => onChange(index, { nome })} required /><div className="grid gap-2"><SelectEspecie value={pet.especie} onChange={(especie) => onChange(index, { especie, raca: '' })} />{pet.especie === 'OUTROS' ? <Field label="Raça" value={pet.raca} onChange={(raca) => onChange(index, { raca })} /> : <AutocompleteSelect label="Raça" value={pet.raca} onChange={(raca) => onChange(index, { raca })} placeholder="Buscar raça" emptyMessage="Nenhuma raça encontrada." options={racasDaEspecie.map((raca) => ({ value: raca.nome, label: raca.nome, description: raca.grupoFci ? `Grupo FCI ${raca.grupoFci}` : undefined }))} />}</div><Field label="Nascimento" value={pet.dataNascimento} onChange={(dataNascimento) => onChange(index, { dataNascimento })} type="date" /></fieldset>;
+  return <fieldset className="grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-2.5">
+    <div className="flex items-center justify-between"><legend className="text-xs font-semibold text-slate-600">Pet {index + 1}</legend>{removivel && <IconButton icon={<Trash2 size={14} />} label="Remover pet" onClick={onRemove} destructive />}</div>
+    <Field label="Nome" value={pet.nome} onChange={(nome) => onChange(index, { nome })} required />
+    <div className="grid gap-2 sm:grid-cols-2">
+      <SelectEspecie value={pet.especie} onChange={(especie) => onChange(index, { especie, raca: '' })} />
+      <label className="grid gap-1 text-xs font-medium text-slate-600">
+        Peso (kg)
+        <input
+          type="number"
+          step="0.1"
+          min="0.1"
+          placeholder="Ex: 8.5"
+          value={pet.peso}
+          onChange={(e) => onChange(index, { peso: e.target.value })}
+          className="h-10 rounded-md border border-slate-300 bg-white px-2.5 text-sm text-ink outline-none transition focus:border-moss focus:ring-2 focus:ring-moss/15"
+        />
+      </label>
+    </div>
+    <div>{pet.especie === 'OUTROS' ? <Field label="Raça" value={pet.raca} onChange={(raca) => onChange(index, { raca })} /> : <AutocompleteSelect label="Raça" value={pet.raca} onChange={(raca) => onChange(index, { raca })} placeholder="Buscar raça" emptyMessage="Nenhuma raça encontrada." options={racasDaEspecie.map((raca) => ({ value: raca.nome, label: raca.nome, description: raca.grupoFci ? `Grupo FCI ${raca.grupoFci}` : undefined }))} />}</div>
+    <Field label="Nascimento" value={pet.dataNascimento} onChange={(dataNascimento) => onChange(index, { dataNascimento })} type="date" />
+  </fieldset>;
 }
 
 function Field({ label, value, onChange, required, type = 'text', inputMode, className = '' }: { label: string; value: string; onChange: (value: string) => void; required?: boolean; type?: string; inputMode?: 'tel'; className?: string }) { return <label className={`grid gap-1 text-xs font-medium text-slate-600 ${className}`}>{label}<input type={type} inputMode={inputMode} value={value} onChange={(event) => onChange(event.target.value)} required={required} className="h-10 rounded-md border border-slate-300 bg-white px-2.5 text-sm text-ink outline-none transition focus:border-moss focus:ring-2 focus:ring-moss/15" /></label>; }

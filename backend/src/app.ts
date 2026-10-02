@@ -10,6 +10,8 @@ import { petsRoutes } from './routes/pets.js';
 import { financeiroRoutes } from './routes/financeiro.js';
 import { usuariosRoutes } from './routes/usuarios.js';
 import { racasRoutes } from './routes/racas.js';
+import { parametrizacaoRoutes } from './routes/parametrizacao.js';
+import { catalogoRoutes } from './routes/catalogo.js';
 
 export const app = new Hono();
 
@@ -27,3 +29,6 @@ app.route('/api/tutores', tutoresRoutes);
 app.route('/api/internacoes', internacoesRoutes);
 app.route('/api/financeiro', financeiroRoutes);
 app.route('/api/analytics', analyticsRoutes);
+app.route('/api/parametrizacao', parametrizacaoRoutes);
+app.route('/api/catalogo', catalogoRoutes);
+

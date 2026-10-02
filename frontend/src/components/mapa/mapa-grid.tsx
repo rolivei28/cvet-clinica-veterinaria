@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Internacao, Medicacao } from '@/types/internacao';
+import { useEffect, useState } from 'react';
+import { Internacao, Medicacao, RegistroProntuario } from '@/types/internacao';
 import { StatusBadge } from '@/components/internacoes/status-badge';
 
 function localYMD(d: Date): string {
@@ -52,22 +52,93 @@ function isPast(slot: string, activeSlot: string | null, date: Date): boolean {
 type Props = { internacoes: Internacao[]; selectedDate: Date };
 
 export function MapaGrid({ internacoes, selectedDate }: Props) {
-  const [administrados, setAdministrados] = useState<Set<string>>(new Set());
+  const [administracoes, setAdministracoes] = useState<Map<string, RegistroProntuario>>(new Map());
+  const [pendentes, setPendentes] = useState<Set<string>>(new Set());
+  const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all(internacoes.map(async (internacao) => {
+      const response = await fetch(`/api/internacoes/${internacao.id}/prontuario`);
+      if (!response.ok) return [];
+      return await response.json() as RegistroProntuario[];
+    })).then((registrosPorInternacao) => {
+      if (cancelled) return;
+      const dataSelecionada = localYMD(selectedDate);
+      const registros = new Map<string, RegistroProntuario>();
+      for (const registro of registrosPorInternacao.flat()) {
+        if (!registro.medicacaoId || !registro.horarioProgramado) continue;
+        const programado = new Date(registro.horarioProgramado);
+        const dataHora = `${localYMD(programado)}-${String(programado.getHours()).padStart(2, '0')}:${String(programado.getMinutes()).padStart(2, '0')}`;
+        if (dataHora.startsWith(`${dataSelecionada}-`)) {
+          registros.set(`${registro.internacaoId}-${registro.medicacaoId}-${dataHora.slice(11)}`, registro);
+        }
+      }
+      setAdministracoes(registros);
+    }).catch(() => {
+      if (!cancelled) setErro('Não foi possível carregar as administrações registradas.');
+    });
+
+    return () => { cancelled = true; };
+  }, [internacoes, selectedDate]);
 
   const isToday    = localYMD(selectedDate) === localYMD(new Date());
   const slots      = getSlots(internacoes, selectedDate);
   const activeSlot = currentSlot(slots, isToday);
 
-  function toggleAdministrado(petId: string, slot: string, medNome: string) {
-    const key = `${petId}-${slot}-${medNome}`;
-    setAdministrados((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
+  async function toggleAdministrado(internacaoId: string, slot: string, med: Medicacao) {
+    if (!med.id) return;
+    const key = `${internacaoId}-${med.id}-${slot}`;
+    if (pendentes.has(key)) return;
+    setErro(null);
+
+    const existente = administracoes.get(key);
+    if (existente && !window.confirm('Desfazer esta administração do prontuário?')) return;
+
+    setPendentes((prev) => new Set(prev).add(key));
+    try {
+      let response: Response;
+      if (existente) {
+        response = await fetch(`/api/internacoes/${internacaoId}/prontuario/${existente.id}`, { method: 'DELETE' });
+      } else {
+        const usuario = JSON.parse(localStorage.getItem('cvet-user') ?? '{}') as { nome?: string };
+        const [year, month, day] = localYMD(selectedDate).split('-').map(Number);
+        const [hour, minute] = slot.split(':').map(Number);
+        const horarioProgramado = new Date(year, month - 1, day, hour, minute).toISOString();
+        response = await fetch(`/api/internacoes/${internacaoId}/medicacoes/${med.id}/administrar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ horarioProgramado, responsavel: usuario.nome ?? '' }),
+        });
+      }
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error ?? 'Não foi possível atualizar a administração.');
+      }
+      if (existente) {
+        setAdministracoes((prev) => {
+          const next = new Map(prev);
+          next.delete(key);
+          return next;
+        });
+      } else {
+        const registro: RegistroProntuario = await response.json();
+        setAdministracoes((prev) => new Map(prev).set(key, registro));
+      }
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : 'Erro ao salvar administração.');
+    } finally {
+      setPendentes((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
   }
 
   return (
+    <>
+    {erro && <p role="alert" className="text-sm text-red-600">{erro}</p>}
     <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
       <table className="min-w-full border-collapse text-sm">
         <thead>
@@ -121,17 +192,18 @@ export function MapaGrid({ internacoes, selectedDate }: Props) {
                       {meds.length > 0 ? (
                         <div className="flex flex-col items-center gap-1">
                           {meds.map((med) => {
-                            const key = `${pet.id}-${slot}-${med.nome}`;
-                            const administrado = administrados.has(key);
+                            const key = `${pet.id}-${med.id}-${slot}`;
+                            const administrado = administracoes.has(key);
                             const dimmed = administrado || autoPast;
                             return (
                               <button
-                                key={med.nome}
+                                key={med.id}
                                 type="button"
-                                onClick={() => toggleAdministrado(pet.id, slot, med.nome)}
-                                title={administrado ? 'Clique para desmarcar' : 'Clique para marcar como ministrado'}
+                                onClick={() => toggleAdministrado(pet.id, slot, med)}
+                                disabled={pendentes.has(key)}
+                                title={administrado ? 'Desfazer administração registrada' : 'Registrar como administrado'}
                                 className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold text-white transition-opacity cursor-pointer ${med.cor} ${
-                                  dimmed ? 'opacity-30 grayscale' : 'hover:opacity-80'
+                                  dimmed ? 'opacity-40 grayscale' : 'hover:opacity-80'
                                 }`}
                               >
                                 {med.nome}
@@ -151,5 +223,6 @@ export function MapaGrid({ internacoes, selectedDate }: Props) {
         </tbody>
       </table>
     </div>
+    </>
   );
 }

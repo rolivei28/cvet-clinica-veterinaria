@@ -122,7 +122,6 @@ Os arquivos abaixo são produzidos por `npx prisma generate` usando `backend/pri
 | `frontend/src/app/globals.css` | Estilos globais, normalizações, cores de fundo e comportamento visual base. |
 | `frontend/src/components/app-shell.tsx` | Protege a área autenticada usando a sessão local e organiza sidebar e conteúdo principal. |
 | `frontend/src/components/sidebar.tsx` | Renderiza a navegação principal em desktop e mobile. |
-| `frontend/src/components/site-header.tsx` | Cabeçalho com identidade visual e atalhos de navegação. |
 | `frontend/src/components/backend-wakeup.tsx` | Consulta o healthcheck da API com tentativas para aguardar seu despertar em provedores que suspendem serviços. |
 | `frontend/src/components/autocomplete-select.tsx` | Controle reutilizável de autoselect para listas pesquisáveis, usado para pets, raças, vias e unidades. |
 | `frontend/src/lib/app-info.ts` | Centraliza constantes de identidade e informações institucionais do CVET. |

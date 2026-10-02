@@ -178,7 +178,7 @@ function LinhaInternacao({ internacao, expandida, onAlternarMedicacoes, onAtuali
       <td className="px-5 py-4">{internacao.leito ? `${internacao.leito.id} - ${internacao.leito.nome}` : 'Não definido'}</td>
       <td className="whitespace-nowrap px-5 py-4">{entrada}</td>
       <td className="px-5 py-4">{resolverProximaMedicacao(internacao)}</td>
-      <td className="whitespace-nowrap px-5 py-4">{internacao.quantidadeDiarias} · R$ {internacao.valorDiarias.toFixed(2).replace('.', ',')}</td>
+      <td className="whitespace-nowrap px-5 py-4">{internacao.quantidadeDiarias.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} · R$ {internacao.valorDiarias.toFixed(2).replace('.', ',')}</td>
       <td className="px-3 py-4 text-right"><div className="flex justify-end gap-1">
         <button type="button" onClick={onAlternarMedicacoes} aria-label={`Gerenciar medicações de ${internacao.petNome}`} title="Gerenciar medicações" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-moss transition hover:bg-moss/10">
           {expandida ? <ChevronUp size={17} /> : <ChevronDown size={17} />}

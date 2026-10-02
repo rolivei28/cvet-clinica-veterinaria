@@ -13,6 +13,7 @@ const tutorSchema = z.object({
     nome: z.string().trim().min(1),
     especie: z.enum(['CANINO', 'FELINO', 'OUTROS']),
     raca: z.string().trim().optional(),
+    peso: z.number().positive().optional().nullable(),
     dataNascimento: z.string().date().optional(),
   })).min(1, 'Cadastre ao menos um pet.'),
 });
@@ -20,7 +21,7 @@ const tutorSchema = z.object({
 export const tutoresRoutes = new Hono()
   .get('/', async (c) => {
     const tutores = await prisma.tutor.findMany({
-      include: { pets: { select: { id: true, nome: true, especie: true, raca: true, dataNascimento: true } } },
+      include: { pets: { select: { id: true, nome: true, especie: true, raca: true, peso: true, dataNascimento: true } } },
       orderBy: { nome: 'asc' },
     });
     return c.json(tutores);
@@ -44,11 +45,12 @@ export const tutoresRoutes = new Hono()
             nome: pet.nome,
             especie: pet.especie,
             raca: pet.raca || null,
+            peso: pet.peso != null ? Number(pet.peso) : null,
             dataNascimento: pet.dataNascimento ? new Date(pet.dataNascimento) : null,
           })),
         },
       },
-      include: { pets: { select: { id: true, nome: true, especie: true, raca: true, dataNascimento: true } } },
+      include: { pets: { select: { id: true, nome: true, especie: true, raca: true, peso: true, dataNascimento: true } } },
     });
     return c.json(tutor, 201);
   })
@@ -73,11 +75,26 @@ export const tutoresRoutes = new Hono()
         nome, telefone, cpf: cpf || null, email: email || null,
         pets: {
           deleteMany: { id: { in: petsRemovidos.map((pet) => pet.id) } },
-          create: pets.filter((pet) => !pet.id).map((pet) => ({ nome: pet.nome, especie: pet.especie, raca: pet.raca || null, dataNascimento: pet.dataNascimento ? new Date(pet.dataNascimento) : null })),
-          update: pets.filter((pet) => pet.id).map((pet) => ({ where: { id: pet.id! }, data: { nome: pet.nome, especie: pet.especie, raca: pet.raca || null, dataNascimento: pet.dataNascimento ? new Date(pet.dataNascimento) : null } })),
+          create: pets.filter((pet) => !pet.id).map((pet) => ({
+            nome: pet.nome,
+            especie: pet.especie,
+            raca: pet.raca || null,
+            peso: pet.peso != null ? Number(pet.peso) : null,
+            dataNascimento: pet.dataNascimento ? new Date(pet.dataNascimento) : null,
+          })),
+          update: pets.filter((pet) => pet.id).map((pet) => ({
+            where: { id: pet.id! },
+            data: {
+              nome: pet.nome,
+              especie: pet.especie,
+              raca: pet.raca || null,
+              peso: pet.peso != null ? Number(pet.peso) : null,
+              dataNascimento: pet.dataNascimento ? new Date(pet.dataNascimento) : null,
+            },
+          })),
         },
       },
-      include: { pets: { select: { id: true, nome: true, especie: true, raca: true, dataNascimento: true } } },
+      include: { pets: { select: { id: true, nome: true, especie: true, raca: true, peso: true, dataNascimento: true } } },
     });
     return c.json(atualizado);
   })

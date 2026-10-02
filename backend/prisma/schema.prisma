@@ -27,7 +27,6 @@ model Leito {
   id           String       @id
   nome         String
   tipo         String       @default("N")
-  valorDiaria  Float        @default(0)
   internacoes  Internacao[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
@@ -63,16 +62,18 @@ model Tutor {
 }
 
 model Pet {
-  id             String       @id @default(cuid())
+  id             String               @id @default(cuid())
   nome           String
   especie        EspeciePet
   raca           String?
+  peso           Float?
   dataNascimento DateTime?
   tutorId        String
-  tutor          Tutor        @relation(fields: [tutorId], references: [id])
+  tutor          Tutor                @relation(fields: [tutorId], references: [id])
   internacoes    Internacao[]
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  prontuarios    RegistroProntuario[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 }
 
 model Raca {
@@ -87,27 +88,29 @@ model Raca {
 }
 
 model Internacao {
-  id               String      @id @default(cuid())
+  id               String               @id @default(cuid())
   petNome          String
   especie          String
   tutorNome        String
-  entradaEm        DateTime    @default(now())
+  entradaEm        DateTime             @default(now())
   dataSaida        DateTime?
-  descricao        String      @default("")
-  quantidadeDiarias Int        @default(0)
-  valorDiarias     Float      @default(0)
-  status           String      @default("estavel")
-  baixa            Boolean     @default(false)
+  descricao        String               @default("")
+  pesoMomento      Float?
+  quantidadeDiarias Float                @default(0)
+  valorDiarias     Float               @default(0)
+  status           String               @default("estavel")
+  baixa            Boolean              @default(false)
   proximaMedicacao String
-  observacao       String      @default("")
+  observacao       String               @default("")
   petId            String?
-  pet              Pet?        @relation(fields: [petId], references: [id])
+  pet              Pet?                 @relation(fields: [petId], references: [id])
   leitoId          String?
-  leito            Leito?      @relation(fields: [leitoId], references: [id])
+  leito            Leito?               @relation(fields: [leitoId], references: [id])
   medicacoes       Medicacao[]
   pagamentos       Pagamento[]
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  prontuarios      RegistroProntuario[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 }
 
 model Medicacao {
@@ -128,4 +131,54 @@ model Medicacao {
   internacao       Internacao @relation(fields: [internacaoId], references: [id], onDelete: Cascade)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
+}
+
+model ItemCatalogo {
+  id                String   @id @default(cuid())
+  nome              String
+  tipo              String
+  categoria         String
+  unidadeEstoque    String   @default("un")
+  quantidadeEstoque Float    @default(0)
+  estoqueMinimo     Float    @default(0)
+  valorUnitario     Float    @default(0)
+  descricao         String   @default("")
+  ativo             Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([tipo, nome])
+}
+
+model TabelaPrecoDiaria {
+  id           String   @id @default(cuid())
+  tipoLeito    String   @default("NORMAL")
+  pesoMin      Float    @default(0)
+  pesoMax      Float
+  descricao    String   @default("")
+  valorDiaria  Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model RegistroProntuario {
+  id                     String      @id @default(cuid())
+  petId                  String
+  pet                    Pet         @relation(fields: [petId], references: [id], onDelete: Cascade)
+  internacaoId           String?
+  internacao             Internacao? @relation(fields: [internacaoId], references: [id], onDelete: SetNull)
+  tipo                   String      @default("EVOLUCAO")
+  titulo                 String      @default("")
+  descricao              String
+  temperatura            Float?
+  frequenciaCardiaca     Int?
+  frequenciaRespiratoria Int?
+  responsavel            String      @default("")
+  dataHora               DateTime    @default(now())
+  medicacaoId            String?
+  horarioProgramado      DateTime?
+  createdAt              DateTime    @default(now())
+  updatedAt              DateTime    @updatedAt
+
+  @@index([internacaoId, tipo, horarioProgramado])
 }

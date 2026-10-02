@@ -33,3 +33,71 @@ a {
 ::selection {
   background: rgba(47, 111, 104, 0.2);
 }
+
+/* ── Print Styles ─────────────────────────────────────────── */
+@media print {
+  /* Esconde tudo da página (sidebar, header, conteúdo principal) */
+  body > * {
+    visibility: hidden !important;
+  }
+
+  /* Esconde o backdrop escuro e remove posição fixa */
+  .print-modal-backdrop {
+    position: absolute !important;
+    background: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Torna visível apenas o modal e seu conteúdo */
+  .print-modal-backdrop,
+  .print-modal-container,
+  .print-modal-container * {
+    visibility: visible !important;
+  }
+
+  .print-modal-container {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* Remove botões de ação dentro do modal */
+  .print-hide {
+    display: none !important;
+  }
+
+  /* Remove backgrounds decorativos do body */
+  body {
+    background: white !important;
+  }
+
+  /* Garante que cores e bordas apareçam na impressão */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Impede quebra de página dentro de cards/registros */
+  .print-no-break {
+    break-inside: avoid !important;
+  }
+
+  /* Força uma página nova */
+  .print-page-break {
+    break-before: page !important;
+  }
+
+  /* Ajusta tamanho da fonte para impressão */
+  .print-content {
+    font-size: 11px !important;
+    padding: 12mm !important;
+  }
+}

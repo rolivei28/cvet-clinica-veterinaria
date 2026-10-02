@@ -20,9 +20,19 @@ vi.mock('../lib/prisma.js', () => ({
       create:    vi.fn(),
     },
     medicacao: {
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    registroProntuario: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
       create: vi.fn(),
       delete: vi.fn(),
     },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -59,7 +69,15 @@ beforeEach(async () => {
   vi.mocked(p.tutor.findFirst).mockResolvedValue(null);
   vi.mocked(p.tutor.create).mockResolvedValue({ id: 'tutor-1', nome: 'João', telefone: '11999', cpf: null, email: null, createdAt: new Date(), updatedAt: new Date() });
   vi.mocked(p.pet.findFirst).mockResolvedValue(null);
-  vi.mocked(p.pet.create).mockResolvedValue({ id: 'pet-1', nome: 'Luna', especie: 'Canina', raca: null, dataNascimento: null, tutorId: 'tutor-1', createdAt: new Date(), updatedAt: new Date() });
+  vi.mocked(p.pet.create).mockResolvedValue({ id: 'pet-1', nome: 'Luna', especie: 'CANINO', raca: null, peso: null, dataNascimento: null, tutorId: 'tutor-1', createdAt: new Date(), updatedAt: new Date() });
+  vi.mocked(p.medicacao.findFirst).mockResolvedValue({ id: 'med-1', nome: 'Dipirona', quantidade: 1, unidade: 'ml', via: 'Oral' } as never);
+  vi.mocked(p.medicacao.update).mockResolvedValue({ dosesAplicadas: 1 } as never);
+  vi.mocked(p.registroProntuario.findFirst).mockResolvedValue(null);
+  vi.mocked(p.registroProntuario.findMany).mockResolvedValue([]);
+  vi.mocked(p.registroProntuario.findUnique).mockResolvedValue(null);
+  vi.mocked(p.registroProntuario.create).mockResolvedValue({ id: 'reg-1', tipo: 'MEDICACAO_ADMINISTRADA' } as never);
+  vi.mocked(p.registroProntuario.delete).mockResolvedValue({ id: 'reg-1' } as never);
+  vi.mocked(p.$transaction).mockResolvedValue([{ id: 'reg-1' }] as never);
 });
 
 describe('GET /api/internacoes', () => {
@@ -121,6 +139,57 @@ describe('PATCH /api/internacoes/:id', () => {
       body: JSON.stringify({ status: 'critico' }),
     });
     expect(res.status).toBe(200);
+  });
+});
+
+describe('POST /api/internacoes/:id/medicacoes/:medId/administrar', () => {
+  it('registra a dose no prontuário e contabiliza a aplicação', async () => {
+    const p = await prismaMock();
+    const res = await app.request('/api/internacoes/int-1/medicacoes/med-1/administrar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ horarioProgramado: '2026-04-18T11:00:00.000Z', responsavel: 'Maria' }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(p.registroProntuario.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        tipo: 'MEDICACAO_ADMINISTRADA',
+        medicacaoId: 'med-1',
+        responsavel: 'Maria',
+      }),
+    }));
+    expect(p.$transaction).toHaveBeenCalledOnce();
+  });
+
+  it('não duplica uma administração já registrada para o horário', async () => {
+    const p = await prismaMock();
+    vi.mocked(p.registroProntuario.findFirst).mockResolvedValueOnce({ id: 'reg-existente' } as never);
+    const res = await app.request('/api/internacoes/int-1/medicacoes/med-1/administrar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ horarioProgramado: '2026-04-18T11:00:00.000Z', responsavel: 'Maria' }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(p.$transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe('DELETE /api/internacoes/:id/prontuario/:registroId', () => {
+  it('remove uma administração e estorna o contador de doses', async () => {
+    const p = await prismaMock();
+    vi.mocked(p.registroProntuario.findUnique).mockResolvedValueOnce({
+      id: 'reg-1', tipo: 'MEDICACAO_ADMINISTRADA', medicacaoId: 'med-1', internacaoId: 'int-1',
+    } as never);
+    const res = await app.request('/api/internacoes/int-1/prontuario/reg-1', { method: 'DELETE' });
+
+    expect(res.status).toBe(204);
+    expect(p.registroProntuario.delete).toHaveBeenCalledWith({ where: { id: 'reg-1' } });
+    expect(p.$transaction).toHaveBeenCalledOnce();
+    expect(p.medicacao.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: { dosesAplicadas: { decrement: 1 } },
+    }));
   });
 });
 

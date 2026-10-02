@@ -38,7 +38,7 @@ export function InternacaoCard({ internacao }: InternacaoCardProps) {
           <p>
             <span className="font-semibold">Leito:</span> {internacao.leito ? `${internacao.leito.id} - ${internacao.leito.nome}` : 'Não definido'}
           </p>
-          <p><span className="font-semibold">Diárias:</span> {internacao.quantidadeDiarias} · R$ {internacao.valorDiarias.toFixed(2).replace('.', ',')}</p>
+          <p><span className="font-semibold">Diárias:</span> {internacao.quantidadeDiarias.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} · R$ {internacao.valorDiarias.toFixed(2).replace('.', ',')}</p>
         </div>
 
         <p className="mt-4 rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-700">{internacao.observacao}</p>
