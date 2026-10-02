@@ -1,10 +1,11 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, BedDouble, CalendarDays, ChevronDown, ChevronUp, CircleDollarSign, Plus, Save, Search, Trash2, X } from 'lucide-react';
+import Link from 'next/link';
 import { Internacao, InternacaoStatus, Medicacao, NovaInternacao } from '@/types/internacao';
 import { resolverProximaMedicacao } from '@/lib/horarios';
+import { InternacaoCard } from './internacao-card';
 import { InternacaoForm } from './internacao-form';
 import { StatusBadge } from './status-badge';
 
@@ -20,7 +21,6 @@ export function InternacoesBoard() {
   const [error, setError]                 = useState<string | null>(null);
   const [busca, setBusca]                 = useState('');
   const [filtroStatus, setFiltroStatus]   = useState<InternacaoStatus | null>(null);
-  const [internacaoExpandida, setInternacaoExpandida] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/internacoes')
@@ -63,12 +63,6 @@ export function InternacoesBoard() {
 
   function toggleStatus(status: InternacaoStatus) {
     setFiltroStatus((prev) => (prev === status ? null : status));
-  }
-
-  function atualizarMedicacoes(internacaoId: string, medicacoes: Medicacao[]) {
-    setInternacoes((current) => current.map((internacao) => (
-      internacao.id === internacaoId ? { ...internacao, medicacoes } : internacao
-    )));
   }
 
   return (
@@ -122,36 +116,15 @@ export function InternacoesBoard() {
           )}
         </div>
 
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-          <table className="w-full min-w-[900px] border-collapse text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-              <tr>
-                <th className="px-5 py-3">Paciente</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3">Leito</th>
-                <th className="px-5 py-3">Entrada</th>
-                <th className="px-5 py-3">Próxima medicação</th>
-                <th className="px-5 py-3">Diárias</th>
-                <th className="w-14 px-3 py-3"><span className="sr-only">Abrir detalhes</span></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {loading && <TabelaMensagem message="Carregando internações..." />}
-              {error && <TabelaMensagem message={error} erro />}
-              {!loading && !error && internacoesFiltradas.length === 0 && (
-                <TabelaMensagem message={busca || filtroStatus ? 'Nenhum resultado para os filtros aplicados.' : 'Nenhuma internação ativa.'} />
-              )}
-              {!loading && !error && internacoesFiltradas.map((internacao) => (
-                <LinhaInternacao
-                  key={internacao.id}
-                  internacao={internacao}
-                  expandida={internacaoExpandida === internacao.id}
-                  onAlternarMedicacoes={() => setInternacaoExpandida((atual) => atual === internacao.id ? null : internacao.id)}
-                  onAtualizarMedicacoes={(medicacoes) => atualizarMedicacoes(internacao.id, medicacoes)}
-                />
-              ))}
-            </tbody>
-          </table>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {loading && <p className="text-sm text-slate-500">Carregando internações...</p>}
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          {!loading && !error && internacoesFiltradas.length === 0 && (
+            <p className="text-sm text-slate-500">{busca || filtroStatus ? 'Nenhum resultado para os filtros aplicados.' : 'Nenhuma internação ativa.'}</p>
+          )}
+          {!loading && !error && internacoesFiltradas.map((internacao) => (
+            <InternacaoCard key={internacao.id} internacao={internacao} />
+          ))}
         </div>
       </section>
     </div>

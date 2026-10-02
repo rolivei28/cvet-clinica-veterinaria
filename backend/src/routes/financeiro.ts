@@ -3,6 +3,9 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { calcularDiariasPorPeso, FaixaPreco, FAIXAS_PADRAO } from '../lib/calculo-diarias.js';
+import { internacaoRepository } from '../repositories/internacao.repository.js';
+import { pagamentoRepository } from '../repositories/pagamento.repository.js';
+import { formaPagamentoRepository } from '../repositories/formaPagamento.repository.js';
 
 const pagamentoSchema = z.object({
   internacaoId: z.string().min(1),
@@ -16,6 +19,8 @@ function resumoFinanceiro(
     entradaEm: Date;
     dataSaida: Date | null;
     baixa: boolean;
+    quantidadeDiarias: number;
+    valorDiarias: number;
     pesoMomento: number | null;
     pet?: { peso: number | null } | null;
     leito: { tipo: string } | null;
@@ -25,14 +30,16 @@ function resumoFinanceiro(
   faixas: FaixaPreco[] = FAIXAS_PADRAO
 ) {
   const hoje = new Date();
-  const fim = internacao.dataSaida && internacao.dataSaida < hoje ? internacao.dataSaida : hoje;
+  const fim = internacao.baixa
+    ? internacao.dataSaida ?? internacao.entradaEm
+    : internacao.dataSaida && internacao.dataSaida < hoje ? internacao.dataSaida : hoje;
   const peso = internacao.pesoMomento ?? internacao.pet?.peso ?? 5.0;
   const tipoLeito = internacao.leito?.tipo ?? 'NORMAL';
 
   const calculoLeito = calcularDiariasPorPeso(peso, tipoLeito, internacao.entradaEm, fim, faixas);
-  const diarias = calculoLeito.quantidadeDiarias;
+  const diarias = internacao.baixa ? internacao.quantidadeDiarias : calculoLeito.quantidadeDiarias;
   const valorDiaria = calculoLeito.valorDiaria;
-  const valorDiarias = calculoLeito.valorDiarias;
+  const valorDiarias = internacao.baixa ? internacao.valorDiarias : calculoLeito.valorDiarias;
   const faixaDescricao = calculoLeito.faixaDescricao;
 
   const valorMedicacoes = internacao.medicacoes.reduce((total, medicacao) => total + medicacao.valorDose * medicacao.dosesAplicadas, 0);
@@ -83,11 +90,8 @@ function calcularCobranca(
 export const financeiroRoutes = new Hono()
   .get('/', async (c) => {
     const [internacoes, formasPagamento, faixasPreco] = await Promise.all([
-      prisma.internacao.findMany({
-        include: { pet: { include: { tutor: true } }, leito: true, medicacoes: true, pagamentos: { include: { formaPagamento: true }, orderBy: { pagoEm: 'desc' } } },
-        orderBy: { entradaEm: 'desc' },
-      }),
-      prisma.formaPagamento.findMany({ orderBy: { nome: 'asc' } }),
+      internacaoRepository.listarComFinanceiro(),
+      formaPagamentoRepository.listar(),
       prisma.tabelaPrecoDiaria.findMany(),
     ]);
     const faixas = faixasPreco.length > 0 ? faixasPreco : FAIXAS_PADRAO;
@@ -100,10 +104,7 @@ export const financeiroRoutes = new Hono()
     const { internacaoId, formaPagamentoId, valor, pagoEm } = c.req.valid('json');
     const encerradaEm = pagoEm ? new Date(`${pagoEm}T12:00:00.000Z`) : new Date();
     const [internacao, faixasPreco] = await Promise.all([
-      prisma.internacao.findUnique({
-        where: { id: internacaoId },
-        include: { pet: true, leito: true, medicacoes: true, pagamentos: true },
-      }),
+      internacaoRepository.buscarComLeitoEMedicacoes(internacaoId),
       prisma.tabelaPrecoDiaria.findMany(),
     ]);
     if (!internacao) return c.json({ error: 'Internação não encontrada.' }, 404);
@@ -116,14 +117,8 @@ export const financeiroRoutes = new Hono()
     }
 
     const pagamento = await prisma.$transaction(async (tx) => {
-      const registrado = await tx.pagamento.create({
-        data: { internacaoId, formaPagamentoId, valor, pagoEm: encerradaEm },
-        include: { formaPagamento: true },
-      });
-      await tx.internacao.update({
-        where: { id: internacaoId },
-        data: { baixa: true, dataSaida: encerradaEm, quantidadeDiarias: cobranca.diarias, valorDiarias: cobranca.valorDiarias },
-      });
+      const registrado = await pagamentoRepository.criar({ internacaoId, formaPagamentoId, valor, pagoEm: encerradaEm }, tx);
+      await internacaoRepository.baixar(internacaoId, { baixa: true, dataSaida: encerradaEm, quantidadeDiarias: cobranca.diarias, valorDiarias: cobranca.valorDiarias }, tx);
       return registrado;
     });
     return c.json(pagamento, 201);

@@ -2,7 +2,7 @@ import { timingSafeEqual, scryptSync } from 'node:crypto';
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { prisma } from '../lib/prisma.js';
+import { usuarioRepository } from '../repositories/usuario.repository.js';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -20,7 +20,7 @@ function senhaConfere(senha: string, senhaHash: string) {
 
 export const authRoutes = new Hono().post('/login', zValidator('json', loginSchema), async (c) => {
   const { email, senha } = c.req.valid('json');
-  const usuario = await prisma.usuario.findUnique({ where: { email: email.toLowerCase() } });
+  const usuario = await usuarioRepository.buscarPorEmail(email.toLowerCase());
 
   if (!usuario || !senhaConfere(senha, usuario.senhaHash)) {
     return c.json({ message: 'E-mail ou senha inválidos.' }, 401);

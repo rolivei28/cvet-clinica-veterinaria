@@ -36,6 +36,15 @@ O software **CVET** visa digitalizar o processo de internação da clínica do D
 - **Zod:** Validação de contratos HTTP na borda da API.
 - **Docker Compose:** Orquestração local de PostgreSQL, API e frontend com healthchecks.
 
+#### 3.2.1 Padrões GoF na arquitetura MVC
+
+- **Repository (implementado):** todas as rotas Hono agora chamam repositórios em `backend/src/repositories/` (`internacao`, `leito`, `pet`, `tutor`, `pagamento`, `formaPagamento`, `usuario`, `raca`) em vez de `prisma.*` diretamente. Cada repositório centraliza as queries e `include`s do seu modelo; a regra de negócio (validação, cálculo de diárias, montagem da resposta) permanece nas rotas. A transação de quitação de pagamento (`financeiro.ts`) orquestra `internacaoRepository` e `pagamentoRepository` recebendo o mesmo client de transação (`tx`). O teste `internacoes.test.ts` foi reescrito para mockar os repositórios em vez do client Prisma.
+- **Strategy:** O cálculo de diárias está duplicado com pequenas variações em `calcularDiarias` (internações) e `resumoFinanceiro`/`calcularCobranca` (financeiro). O campo `Leito.tipo` (Normal/UTI) já existe mas não influencia o cálculo. Proposta: `EstrategiaCobranca` com implementações `CobrancaPadraoStrategy` e `CobrancaUTIStrategy`, selecionadas por `leito.tipo`, unificando a lógica hoje espalhada em três funções.
+- **Observer:** O Mapa de Execução (`mapa-grid.tsx`) marca doses como administradas apenas em estado local do React — isso não persiste no backend nem reflete no Financeiro (que calcula `valorMedicacoes` a partir de `dosesAplicadas`). Proposta: ao persistir a aplicação de uma dose, emitir um evento (`medicacao.aplicada`) consumido por observadores (recalcular financeiro, atualizar analytics, notificar tutor), sincronizando Mapa, detalhe da internação e financeiro.
+- **Adapter:** A autenticação (`auth.ts`) implementa scrypt manualmente dentro da rota, mas o plano de reuso (seção 5) já prevê NextAuth/Firebase no futuro. Proposta: `AutenticacaoAdapter` com `autenticar(email, senha)`, tendo `SenhaLocalAdapter` (implementação atual) e, futuramente, `FirebaseAuthAdapter`, sem alterar a rota. O mesmo padrão se aplica a uma futura integração de catálogo de raças externo ou gateway de pagamento (Pix/Mercado Pago) em `FormaPagamento`.
+
+**Prioridade sugerida:** Repository e Strategy resolvem duplicação de código já existente; Observer corrige uma lacuna real de sincronização no Mapa de Execução; Adapter prepara integrações (auth, pagamento) ainda não implementadas.
+
 ### 3.3 Visões da Arquitetura (Modelo 4+1)
 1. **Lógica:** Diagramas de classes e entidades clínicas.
 2. **Processo:** Fluxo de concorrência e integridade em tempo de execução.

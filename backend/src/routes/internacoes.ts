@@ -4,6 +4,9 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { calcularHorarios } from '../lib/horarios.js';
 import { calcularDiariasPorPeso } from '../lib/calculo-diarias.js';
+import { internacaoRepository } from '../repositories/internacao.repository.js';
+import { leitoRepository } from '../repositories/leito.repository.js';
+import { petRepository } from '../repositories/pet.repository.js';
 
 const statusSchema = z.enum(['estavel', 'observacao', 'critico']);
 
@@ -56,8 +59,6 @@ const administracaoSchema = z.object({
   responsavel: z.string().trim().min(1),
 });
 
-const internacaoInclude = { pet: { include: { tutor: true } }, leito: true } as const;
-
 function parseMeds(internacao: Record<string, unknown> & { medicacoes?: { horarios: string }[] }) {
   return {
     ...internacao,
@@ -72,11 +73,7 @@ export const internacoesRoutes = new Hono()
 
   // ── Internações ──────────────────────────────────────────────
   .get('/', async (c) => {
-    const rows = await prisma.internacao.findMany({
-      where: { baixa: false },
-      orderBy: { entradaEm: 'desc' },
-      include: { ...internacaoInclude, medicacoes: true },
-    });
+    const rows = await internacaoRepository.listarAtivas();
     return c.json(rows.map(parseMeds));
   })
 
@@ -87,24 +84,17 @@ export const internacoesRoutes = new Hono()
 
     if (dataSaida <= entradaEm) return c.json({ error: 'A data e hora de saída devem ser posteriores à entrada.' }, 400);
 
-    const leito = await prisma.leito.findUnique({ where: { id: data.leitoId } });
+    const leito = await leitoRepository.buscarPorId(data.leitoId);
     if (!leito) return c.json({ error: 'Selecione um leito válido.' }, 400);
 
-    const conflito = await prisma.internacao.findFirst({
-      where: {
-        leitoId: leito.id,
-        entradaEm: { lte: dataSaida },
-        dataSaida: { gte: entradaEm },
-      },
-      select: { petNome: true, entradaEm: true, dataSaida: true },
-    });
+    const conflito = await internacaoRepository.verificarConflitoLeito(leito.id, entradaEm, dataSaida);
     if (conflito) {
       return c.json({
         error: `O leito ${leito.id} já está reservado para ${conflito.petNome} no período selecionado.`,
       }, 409);
     }
 
-    const pet = await prisma.pet.findUnique({ where: { id: petId }, include: { tutor: true } });
+    const pet = await petRepository.buscarPorId(petId);
     if (!pet) return c.json({ error: 'Pet não encontrado.' }, 404);
 
     const pesoFinal = pesoMomento ?? pet.peso ?? 5.0;
@@ -112,62 +102,52 @@ export const internacoesRoutes = new Hono()
     const diariasCalc = calcularDiariasPorPeso(pesoFinal, leito.tipo, entradaEm, dataSaida, faixas);
 
     if (pesoMomento && (!pet.peso || pet.peso !== pesoMomento)) {
-      await prisma.pet.update({ where: { id: pet.id }, data: { peso: pesoMomento } });
+      await petRepository.atualizarPeso(pet.id, pesoMomento);
     }
 
-    const internacao = await prisma.internacao.create({
-      data: {
-        ...data,
-        pesoMomento: pesoFinal,
-        entradaEm,
-        dataSaida,
-        quantidadeDiarias: diariasCalc.quantidadeDiarias,
-        valorDiarias: diariasCalc.valorDiarias,
-        petId: pet.id,
-        petNome: pet.nome,
-        especie: pet.especie,
-        tutorNome: pet.tutor.nome,
-        medicacoes: {
-          create: medicacoes.map((m) => ({
-            nome:            m.nome,
-            horarios:        JSON.stringify(calcularHorarios(m.primeiroHorario, m.frequenciaHoras)),
-            cor:             m.cor,
-            via:             m.via,
-            unidade:         m.unidade,
-            quantidade:      m.quantidade,
-            valorDose:       m.valorDose,
-            dosesAplicadas:  m.dosesAplicadas,
-            frequenciaHoras: m.frequenciaHoras,
-            primeiroHorario: m.primeiroHorario,
-            fimEm:           m.fimEm ? new Date(m.fimEm) : null,
-          })),
-        },
+    const internacao = await internacaoRepository.criar({
+      ...data,
+      pesoMomento: pesoFinal,
+      entradaEm,
+      dataSaida,
+      quantidadeDiarias: diariasCalc.quantidadeDiarias,
+      valorDiarias: diariasCalc.valorDiarias,
+      petId: pet.id,
+      petNome: pet.nome,
+      especie: pet.especie,
+      tutorNome: pet.tutor.nome,
+      medicacoes: {
+        create: medicacoes.map((m) => ({
+          nome:            m.nome,
+          horarios:        JSON.stringify(calcularHorarios(m.primeiroHorario, m.frequenciaHoras)),
+          cor:             m.cor,
+          via:             m.via,
+          unidade:         m.unidade,
+          quantidade:      m.quantidade,
+          valorDose:       m.valorDose,
+          dosesAplicadas:  m.dosesAplicadas,
+          frequenciaHoras: m.frequenciaHoras,
+          primeiroHorario: m.primeiroHorario,
+          fimEm:           m.fimEm ? new Date(m.fimEm) : null,
+        })),
       },
-      include: { ...internacaoInclude, medicacoes: true },
     });
     return c.json(parseMeds(internacao), 201);
   })
 
   .get('/:id', async (c) => {
-    const row = await prisma.internacao.findUnique({
-      where: { id: c.req.param('id') },
-      include: { ...internacaoInclude, medicacoes: true },
-    });
+    const row = await internacaoRepository.buscarPorId(c.req.param('id'));
     if (!row) return c.json({ error: 'Internação não encontrada.' }, 404);
     return c.json(parseMeds(row));
   })
 
   .patch('/:id', zValidator('json', updateSchema), async (c) => {
-    const row = await prisma.internacao.update({
-      where: { id: c.req.param('id') },
-      data: c.req.valid('json'),
-      include: { ...internacaoInclude, medicacoes: true },
-    });
+    const row = await internacaoRepository.atualizarStatus(c.req.param('id'), c.req.valid('json'));
     return c.json(parseMeds(row));
   })
 
   .delete('/:id', async (c) => {
-    await prisma.internacao.delete({ where: { id: c.req.param('id') } });
+    await internacaoRepository.remover(c.req.param('id'));
     return c.body(null, 204);
   })
 
@@ -175,22 +155,20 @@ export const internacoesRoutes = new Hono()
   .post('/:id/medicacoes', zValidator('json', medicacaoSchema), async (c) => {
     const { nome, descricao, primeiroHorario, frequenciaHoras, fimEm, cor, via, unidade, quantidade, valorDose, dosesAplicadas } = c.req.valid('json');
     const horarios = calcularHorarios(primeiroHorario, frequenciaHoras);
-    const med = await prisma.medicacao.create({
-      data: {
-        nome,
-        descricao,
-        horarios:        JSON.stringify(horarios),
-        cor,
-        via,
-        unidade,
-        quantidade,
-        valorDose,
-        dosesAplicadas,
-        frequenciaHoras,
-        primeiroHorario,
-        fimEm:           fimEm ? new Date(fimEm) : null,
-        internacaoId:    c.req.param('id'),
-      },
+    const med = await internacaoRepository.adicionarMedicacao({
+      nome,
+      descricao,
+      horarios:        JSON.stringify(horarios),
+      cor,
+      via,
+      unidade,
+      quantidade,
+      valorDose,
+      dosesAplicadas,
+      frequenciaHoras,
+      primeiroHorario,
+      fimEm:           fimEm ? new Date(fimEm) : null,
+      internacaoId:    c.req.param('id'),
     });
     return c.json({ ...med, horarios }, 201);
   })
@@ -198,28 +176,25 @@ export const internacoesRoutes = new Hono()
   .patch('/:id/medicacoes/:medId', zValidator('json', medicacaoSchema), async (c) => {
     const { nome, descricao, primeiroHorario, frequenciaHoras, fimEm, cor, via, unidade, quantidade, valorDose, dosesAplicadas } = c.req.valid('json');
     const horarios = calcularHorarios(primeiroHorario, frequenciaHoras);
-    const med = await prisma.medicacao.update({
-      where: { id: c.req.param('medId'), internacaoId: c.req.param('id') },
-      data: {
-        nome,
-        descricao,
-        horarios: JSON.stringify(horarios),
-        cor,
-        via,
-        unidade,
-        quantidade,
-        valorDose,
-        dosesAplicadas,
-        frequenciaHoras,
-        primeiroHorario,
-        fimEm: fimEm ? new Date(fimEm) : null,
-      },
+    const med = await internacaoRepository.atualizarMedicacao(c.req.param('id'), c.req.param('medId'), {
+      nome,
+      descricao,
+      horarios: JSON.stringify(horarios),
+      cor,
+      via,
+      unidade,
+      quantidade,
+      valorDose,
+      dosesAplicadas,
+      frequenciaHoras,
+      primeiroHorario,
+      fimEm: fimEm ? new Date(fimEm) : null,
     });
     return c.json({ ...med, horarios });
   })
 
   .delete('/:id/medicacoes/:medId', async (c) => {
-    await prisma.medicacao.delete({ where: { id: c.req.param('medId') } });
+    await internacaoRepository.removerMedicacao(c.req.param('medId'));
     return c.body(null, 204);
   })
 
@@ -267,7 +242,6 @@ export const internacoesRoutes = new Hono()
     return c.json(registro, 201);
   })
 
-  // ── Prontuário Clínico ───────────────────────────────────────
   .get('/:id/prontuario', async (c) => {
     const internacaoId = c.req.param('id');
     const internacao = await prisma.internacao.findUnique({

@@ -10,6 +10,7 @@ type MedicacaoCobrada = { id: string; nome: string; quantidade: number; unidade:
 type ItemFinanceiro = {
   id: string;
   petNome: string;
+  tutorNome: string;
   pesoMomento?: number | null;
   entradaEm: string;
   dataSaida?: string | null;

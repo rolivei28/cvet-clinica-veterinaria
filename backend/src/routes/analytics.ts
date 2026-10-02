@@ -1,11 +1,9 @@
 import { Hono } from 'hono';
-import { prisma } from '../lib/prisma.js';
+import { internacaoRepository } from '../repositories/internacao.repository.js';
 
 export const analyticsRoutes = new Hono()
   .get('/', async (c) => {
-    const internacoes = await prisma.internacao.findMany({
-      select: { status: true, especie: true, entradaEm: true },
-    });
+    const internacoes = await internacaoRepository.listarParaAnalytics();
 
     const porStatus = [
       { name: 'Estável',    value: internacoes.filter((i) => i.status === 'estavel').length },
