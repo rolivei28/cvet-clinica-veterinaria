@@ -116,3 +116,18 @@ A aplicação é hospedada no [Render](https://render.com) e o deploy é acionad
 
 - Frontend: https://cvet-web.onrender.com
 - API: https://cvet-api.onrender.com
+
+#### Banco de dados (Neon)
+
+O banco é um PostgreSQL gratuito no [Neon](https://neon.tech). O `render.yaml`
+declara `DATABASE_URL` com `sync: false`, então o valor é informado no dashboard
+e nunca vai para o repositório.
+
+1. No Neon, crie um projeto e copie a connection string (host `...neon.tech`).
+   Ela deve terminar com `?sslmode=require`.
+2. No Render, em **cvet-api > Environment**, defina `DATABASE_URL` com essa string.
+3. Faça um novo deploy da API. O `docker-entrypoint.sh` executa `scripts/init-db.mjs`
+   no start e cria o schema no banco novo.
+
+O Neon suspende o banco após um período sem uso; a primeira requisição depois disso
+pode demorar alguns segundos. Não commite a URL do banco, pois ela contém credenciais.

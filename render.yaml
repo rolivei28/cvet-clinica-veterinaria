@@ -2,6 +2,7 @@ services:
   - type: web
     name: cvet-api
     runtime: docker
+    region: oregon
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     plan: free
@@ -10,14 +11,14 @@ services:
         value: 3001
       - key: NODE_ENV
         value: production
+      # Neon: defina no dashboard do Render (connection string com sslmode=require)
       - key: DATABASE_URL
-        fromDatabase:
-          name: cvet-postgres
-          property: connectionString
+        sync: false
 
   - type: web
     name: cvet-web
     runtime: docker
+    region: oregon
     dockerfilePath: ./frontend/Dockerfile
     dockerContext: ./frontend
     plan: free
@@ -28,7 +29,3 @@ services:
         value: production
       - key: API_URL
         value: https://cvet-api.onrender.com
-
-databases:
-  - name: cvet-postgres
-    plan: free
