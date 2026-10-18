@@ -39,6 +39,7 @@ export default function FinanceiroPage() {
   const [formas, setFormas] = useState<FormaPagamento[]>([]);
   const [erro, setErro] = useState('');
   const [filtro, setFiltro] = useState<'TODOS' | 'ATIVAS' | 'ENCERRADAS'>('ATIVAS');
+  const [aba, setAba] = useState<'EXTRATO' | 'BALANCO'>('EXTRATO');
   const [printId, setPrintId] = useState<string | null>(null);
 
   async function carregar() {
@@ -130,7 +131,24 @@ export default function FinanceiroPage() {
         </div>
       )}
 
-      <div className="space-y-6">
+      <div className="print-hide inline-flex w-fit rounded-xl border border-slate-200 bg-white p-1 text-xs shadow-sm">
+        <button
+          onClick={() => setAba('EXTRATO')}
+          className={`rounded-lg px-3 py-1.5 font-medium transition ${aba === 'EXTRATO' ? 'bg-ink text-white' : 'text-slate-600 hover:text-ink'}`}
+        >
+          Extrato
+        </button>
+        <button
+          onClick={() => setAba('BALANCO')}
+          className={`rounded-lg px-3 py-1.5 font-medium transition ${aba === 'BALANCO' ? 'bg-ink text-white' : 'text-slate-600 hover:text-ink'}`}
+        >
+          Balanço
+        </button>
+      </div>
+
+      {aba === 'BALANCO' && <BalancoTabela itens={internacoesFiltradas} />}
+
+      <div className={`space-y-6 ${aba === 'BALANCO' ? 'hidden' : ''}`}>
         {internacoesFiltradas.map((item) => {
           const peso = item.financeiro.peso ?? item.pesoMomento ?? item.pet?.peso ?? 5.0;
           return (
@@ -323,6 +341,91 @@ export default function FinanceiroPage() {
         );
       })()}
     </main>
+  );
+}
+
+function BalancoTabela({ itens }: { itens: ItemFinanceiro[] }) {
+  const total = itens.reduce(
+    (acc, item) => ({
+      leito: acc.leito + item.financeiro.valorDiarias,
+      medicacoes: acc.medicacoes + item.financeiro.valorMedicacoes,
+      gasto: acc.gasto + item.financeiro.valorTotal,
+      pago: acc.pago + item.financeiro.valorPago,
+      saldo: acc.saldo + item.financeiro.saldo,
+    }),
+    { leito: 0, medicacoes: 0, gasto: 0, pago: 0, saldo: 0 }
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <span className="text-xs uppercase text-slate-400">Total Gasto (a receber)</span>
+          <p className="text-2xl font-bold text-ink">{money(total.gasto)}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <span className="text-xs uppercase text-slate-400">Total Recebido</span>
+          <p className="text-2xl font-bold text-emerald-600">{money(total.pago)}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <span className="text-xs uppercase text-slate-400">Saldo em Aberto</span>
+          <p className="text-2xl font-bold text-amber-600">{money(total.saldo)}</p>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b border-slate-100 bg-slate-50 text-xs text-slate-500">
+            <tr>
+              <th className="px-4 py-3 font-semibold">Pet / Tutor</th>
+              <th className="px-4 py-3 font-semibold">Situação</th>
+              <th className="px-4 py-3 text-right font-semibold">Leito</th>
+              <th className="px-4 py-3 text-right font-semibold">Medicamentos</th>
+              <th className="px-4 py-3 text-right font-semibold">Total Gasto</th>
+              <th className="px-4 py-3 text-right font-semibold">Pago</th>
+              <th className="px-4 py-3 text-right font-semibold">Saldo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {itens.map((item) => (
+              <tr key={item.id} className="border-b border-slate-100 last:border-0">
+                <td className="px-4 py-3">
+                  <strong className="text-ink">{item.petNome}</strong>
+                  <span className="block text-xs text-slate-500">{item.pet?.tutor.nome ?? item.tutorNome}</span>
+                </td>
+                <td className="px-4 py-3 text-xs text-slate-600">{item.financeiro.encerrada ? 'Encerrada' : 'Em internação'}</td>
+                <td className="px-4 py-3 text-right">{money(item.financeiro.valorDiarias)}</td>
+                <td className="px-4 py-3 text-right">{money(item.financeiro.valorMedicacoes)}</td>
+                <td className="px-4 py-3 text-right font-semibold text-ink">{money(item.financeiro.valorTotal)}</td>
+                <td className="px-4 py-3 text-right text-emerald-600">{money(item.financeiro.valorPago)}</td>
+                <td className={`px-4 py-3 text-right font-semibold ${item.financeiro.saldo > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                  {money(item.financeiro.saldo)}
+                </td>
+              </tr>
+            ))}
+            {itens.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-slate-400">
+                  Nenhuma internação encontrada para este filtro.
+                </td>
+              </tr>
+            )}
+          </tbody>
+          {itens.length > 0 && (
+            <tfoot className="border-t border-slate-200 bg-slate-50 text-sm font-bold text-ink">
+              <tr>
+                <td className="px-4 py-3" colSpan={2}>Total</td>
+                <td className="px-4 py-3 text-right">{money(total.leito)}</td>
+                <td className="px-4 py-3 text-right">{money(total.medicacoes)}</td>
+                <td className="px-4 py-3 text-right">{money(total.gasto)}</td>
+                <td className="px-4 py-3 text-right text-emerald-600">{money(total.pago)}</td>
+                <td className="px-4 py-3 text-right text-amber-600">{money(total.saldo)}</td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+    </div>
   );
 }
 
