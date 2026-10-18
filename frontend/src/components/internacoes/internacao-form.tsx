@@ -109,11 +109,11 @@ export function InternacaoForm({ onCreate }: InternacaoFormProps) {
 
   const petSelecionado = pets.find((pet) => pet.id === petId);
 
-  useEffect(() => {
-    if (petSelecionado && petSelecionado.peso != null) {
-      setPesoMomento(petSelecionado.peso);
-    }
-  }, [petId, petSelecionado]);
+  function selecionarPet(id: string) {
+    setPetId(id);
+    const pet = pets.find((item) => item.id === id);
+    if (pet && pet.peso != null) setPesoMomento(pet.peso);
+  }
 
   const leitoSelecionado = leitos.find((leito) => leito.id === leitoId);
   const duracaoMs = entradaEm && dataSaida && horaEntrada && horaSaida
@@ -231,7 +231,7 @@ export function InternacaoForm({ onCreate }: InternacaoFormProps) {
 
         {modoPet === 'existente' ? (
           <div className="grid gap-4 lg:grid-cols-3">
-            <AutocompleteSelect label="Pet cadastrado" value={petId} onChange={setPetId} placeholder="Buscar por pet, espécie ou tutor" emptyMessage="Nenhum pet encontrado." required options={pets.map((pet) => ({ value: pet.id, label: pet.nome, description: `${pet.especie} · Tutor: ${pet.tutor.nome}` }))} />
+            <AutocompleteSelect label="Pet cadastrado" value={petId} onChange={selecionarPet} placeholder="Buscar por pet, espécie ou tutor" emptyMessage="Nenhum pet encontrado." required options={pets.map((pet) => ({ value: pet.id, label: pet.nome, description: `${pet.especie} · Tutor: ${pet.tutor.nome}` }))} />
           </div>
         ) : (
           <div className="grid gap-3 rounded-xl border border-moss/20 bg-moss/5 p-4">

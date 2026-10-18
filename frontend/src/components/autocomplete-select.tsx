@@ -25,6 +25,7 @@ export function AutocompleteSelect({ label, value, options, onChange, placeholde
   const selected = options.find((option) => option.value === value);
   const filtered = options.filter((option) => `${option.label} ${option.description ?? ''}`.toLocaleLowerCase('pt-BR').includes(query.toLocaleLowerCase('pt-BR'))).slice(0, 8);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza texto com a opção selecionada
   useEffect(() => { setQuery(selected?.label ?? ''); }, [selected?.label]);
 
   function select(option: AutocompleteOption) {

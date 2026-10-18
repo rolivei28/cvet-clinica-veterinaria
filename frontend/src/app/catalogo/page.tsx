@@ -52,6 +52,7 @@ export default function CatalogoPage() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- recarrega ao mudar filtros
   useEffect(() => { void carregar(); }, [filtro, busca]);
 
   function novoItem(tipo = filtro === 'UTENSILIO' ? 'UTENSILIO' : 'MEDICAMENTO') {

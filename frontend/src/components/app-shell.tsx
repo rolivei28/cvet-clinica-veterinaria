@@ -15,6 +15,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const authenticated = Boolean(localStorage.getItem(SESSION_KEY));
     if (!authenticated && pathname !== '/login') router.replace('/login');
     if (authenticated && pathname === '/login') router.replace('/internacoes');
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage só existe no cliente
     setCheckingSession(false);
   }, [pathname, router]);
 

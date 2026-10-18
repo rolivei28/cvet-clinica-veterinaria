@@ -25,7 +25,16 @@ export default function TutoresPage() {
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
 
+  async function carregarTutores() {
+    try {
+      const response = await fetch('/api/tutores');
+      if (!response.ok) throw new Error();
+      setTutores(await response.json());
+    } catch { setErro('Não foi possível carregar os tutores.'); }
+  }
+
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial de dados
     carregarTutores();
     Promise.all([fetch('/api/racas?especie=CANINO'), fetch('/api/racas?especie=FELINO')])
       .then(async (responses) => {
@@ -34,14 +43,6 @@ export default function TutoresPage() {
       })
       .catch(() => setErro('Não foi possível carregar o catálogo de raças.'));
   }, []);
-
-  async function carregarTutores() {
-    try {
-      const response = await fetch('/api/tutores');
-      if (!response.ok) throw new Error();
-      setTutores(await response.json());
-    } catch { setErro('Não foi possível carregar os tutores.'); }
-  }
 
   const tutoresFiltrados = useMemo(() => {
     const termo = busca.trim().toLocaleLowerCase('pt-BR');
