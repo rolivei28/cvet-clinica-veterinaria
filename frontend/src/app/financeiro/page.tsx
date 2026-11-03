@@ -38,7 +38,7 @@ export default function FinanceiroPage() {
   const [internacoes, setInternacoes] = useState<ItemFinanceiro[]>([]);
   const [formas, setFormas] = useState<FormaPagamento[]>([]);
   const [erro, setErro] = useState('');
-  const [filtro, setFiltro] = useState<'TODOS' | 'ATIVAS' | 'ENCERRADAS'>('ATIVAS');
+  const [filtro, setFiltro] = useState<'TODOS' | 'ATIVAS' | 'ENCERRADAS'>('TODOS');
   const [aba, setAba] = useState<'EXTRATO' | 'BALANCO'>('EXTRATO');
   const [printId, setPrintId] = useState<string | null>(null);
 
@@ -80,7 +80,9 @@ export default function FinanceiroPage() {
     await carregar();
   }
 
-  const internacoesFiltradas = internacoes.filter((item) => {
+  // Extrato: apenas internações em andamento. Balanço: todas (filtráveis).
+  const internacoesExtrato = internacoes.filter((item) => !item.financeiro.encerrada);
+  const internacoesBalanco = internacoes.filter((item) => {
     if (filtro === 'ATIVAS') return !item.financeiro.encerrada;
     if (filtro === 'ENCERRADAS') return item.financeiro.encerrada;
     return true;
@@ -102,7 +104,7 @@ export default function FinanceiroPage() {
           </p>
         </div>
 
-        <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 text-xs shadow-sm">
+        {aba === 'BALANCO' && <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 text-xs shadow-sm">
           <button
             onClick={() => setFiltro('ATIVAS')}
             className={`rounded-lg px-3 py-1.5 font-medium transition ${filtro === 'ATIVAS' ? 'bg-moss text-white' : 'text-slate-600 hover:text-ink'}`}
@@ -121,7 +123,7 @@ export default function FinanceiroPage() {
           >
             Todas
           </button>
-        </div>
+        </div>}
       </header>
 
       {erro && (
@@ -146,10 +148,10 @@ export default function FinanceiroPage() {
         </button>
       </div>
 
-      {aba === 'BALANCO' && <BalancoTabela itens={internacoesFiltradas} />}
+      {aba === 'BALANCO' && <BalancoTabela itens={internacoesBalanco} />}
 
       <div className={`space-y-6 ${aba === 'BALANCO' ? 'hidden' : ''}`}>
-        {internacoesFiltradas.map((item) => {
+        {internacoesExtrato.map((item) => {
           const peso = item.financeiro.peso ?? item.pesoMomento ?? item.pet?.peso ?? 5.0;
           return (
             <article
@@ -319,9 +321,9 @@ export default function FinanceiroPage() {
           );
         })}
 
-        {internacoesFiltradas.length === 0 && (
+        {internacoesExtrato.length === 0 && (
           <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-400">
-            <p className="text-sm">Nenhuma internação encontrada para este filtro.</p>
+            <p className="text-sm">Nenhuma internação em andamento.</p>
           </div>
         )}
       </div>

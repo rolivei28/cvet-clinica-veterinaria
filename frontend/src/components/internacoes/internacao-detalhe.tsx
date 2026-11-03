@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, Trash2, FileText, Activity, Stethoscope, Syringe, AlertCircle, Plus, Thermometer, Heart, Wind, Printer } from 'lucide-react';
 import { Internacao, InternacaoStatus, Medicacao, RegistroProntuario, TipoRegistroProntuario } from '@/types/internacao';
 import { calcularHorarios, FREQUENCIAS, resolverProximaMedicacao } from '@/lib/horarios';
@@ -32,6 +33,9 @@ export function InternacaoDetalhe({ id }: Props) {
   const [internacao, setInternacao] = useState<Internacao | null>(null);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
+  const router = useRouter();
+  const [excluindo, setExcluindo]     = useState(false);
+  const [erroExcluir, setErroExcluir] = useState<string | null>(null);
 
   // Prontuário state
   const [prontuarios, setProntuarios] = useState<RegistroProntuario[]>([]);
@@ -82,6 +86,20 @@ export function InternacaoDetalhe({ id }: Props) {
       .then((itens) => setCatalogoMedicamentos(itens))
       .catch(() => {});
   }, [id]);
+
+  async function deleteInternacao() {
+    if (!internacao || !window.confirm(`Excluir a internação de ${internacao.petNome}? Esta ação não pode ser desfeita.`)) return;
+    setExcluindo(true);
+    setErroExcluir(null);
+    const res = await fetch(`/api/internacoes/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      router.push('/internacoes');
+      return;
+    }
+    const body = await res.json().catch(() => null);
+    setErroExcluir(body?.error ?? 'Não foi possível excluir a internação.');
+    setExcluindo(false);
+  }
 
   async function updateStatus(status: InternacaoStatus) {
     const res = await fetch(`/api/internacoes/${id}`, {
@@ -235,6 +253,22 @@ export function InternacaoDetalhe({ id }: Props) {
           ))}
         </div>
       </section>
+
+      {!internacao.baixa && (
+        <section className="rounded-2xl border border-rose-200 bg-white p-5 shadow-sm">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-rose-600">Zona de risco</p>
+          <p className="mb-3 text-sm text-slate-500">Criou esta internação por engano? Excluir remove também medicações, prontuário e pagamentos vinculados.</p>
+          {erroExcluir && <p className="mb-2 text-sm text-red-600">{erroExcluir}</p>}
+          <button
+            onClick={deleteInternacao}
+            disabled={excluindo}
+            className="flex items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-50"
+          >
+            <Trash2 size={15} />
+            {excluindo ? 'Excluindo…' : 'Excluir internação'}
+          </button>
+        </section>
+      )}
 
       {/* Prontuário Clínico & Linha do Tempo */}
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

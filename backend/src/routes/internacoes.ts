@@ -147,7 +147,11 @@ export const internacoesRoutes = new Hono()
   })
 
   .delete('/:id', async (c) => {
-    await internacaoRepository.remover(c.req.param('id'));
+    const id = c.req.param('id');
+    const row = await internacaoRepository.buscarPorId(id);
+    if (!row) return c.json({ error: 'Internação não encontrada.' }, 404);
+    if (row.baixa) return c.json({ error: 'Internações encerradas não podem ser excluídas.' }, 409);
+    await internacaoRepository.remover(id);
     return c.body(null, 204);
   })
 
