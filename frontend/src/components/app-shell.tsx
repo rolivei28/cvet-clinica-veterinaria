@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
+import { MedicacaoLembretes } from '@/components/medicacao-lembretes';
 
 const SESSION_KEY = 'cvet-user';
 
@@ -26,6 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-slate-50">
       <Sidebar />
       <div className="flex-1 overflow-y-auto">{children}</div>
+      <MedicacaoLembretes />
     </div>
   );
 }
