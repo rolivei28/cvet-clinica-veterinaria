@@ -41,7 +41,7 @@ export const internacaoRepository = {
 
   verificarConflitoLeito: (leitoId: string, entradaEm: Date, dataSaida: Date) =>
     prisma.internacao.findFirst({
-      where: { leitoId, entradaEm: { lte: dataSaida }, dataSaida: { gte: entradaEm } },
+      where: { leitoId, baixa: false, entradaEm: { lte: dataSaida }, dataSaida: { gte: entradaEm } },
       select: { petNome: true, entradaEm: true, dataSaida: true },
     }),
 
