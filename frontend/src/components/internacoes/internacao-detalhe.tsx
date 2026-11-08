@@ -141,7 +141,10 @@ export function InternacaoDetalhe({ id }: Props) {
   }
 
   async function removeMedicacao(medId: string) {
-    await fetch(`/api/internacoes/${id}/medicacoes/${medId}`, { method: 'DELETE' });
+    const med = internacao?.medicacoes.find((m) => (m as Medicacao & { id: string }).id === medId);
+    if (!window.confirm(`Remover a medicação ${med?.nome ?? ''}? Esta ação não pode ser desfeita.`)) return;
+    const res = await fetch(`/api/internacoes/${id}/medicacoes/${medId}`, { method: 'DELETE' });
+    if (!res.ok) { window.alert('Não foi possível remover a medicação.'); return; }
     setInternacao((prev) =>
       prev ? { ...prev, medicacoes: prev.medicacoes.filter((m) => (m as Medicacao & { id: string }).id !== medId) } : prev
     );
@@ -558,7 +561,7 @@ export function InternacaoDetalhe({ id }: Props) {
             <AutocompleteSelect label="Unidade" value={medUnidade} onChange={setMedUnidade} placeholder="Buscar unidade" emptyMessage="Nenhuma unidade encontrada." options={UNIDADES.map((unidade) => ({ value: unidade, label: unidade }))} />
             <AutocompleteSelect label="Via" value={medVia} onChange={setMedVia} placeholder="Buscar via" emptyMessage="Nenhuma via encontrada." options={VIAS.map((via) => ({ value: via, label: via }))} />
             <label className="grid gap-1.5 text-sm font-medium text-slate-700">
-              Preço por dose
+              Custo por dose (interno)
               <input
                 type="number" min="0" step="0.01"
                 value={medValorDose}

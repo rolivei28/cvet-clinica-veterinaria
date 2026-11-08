@@ -1,15 +1,6 @@
 'use client';
 
-import { BedDouble, Pill, WalletCards, CheckCircle2 } from 'lucide-react';
-
-type MedicacaoCobrada = {
-  id: string;
-  nome: string;
-  quantidade: number;
-  unidade: string;
-  valorDose: number;
-  dosesAplicadas: number;
-};
+import { BedDouble, WalletCards, CheckCircle2 } from 'lucide-react';
 
 type FinanceiroItem = {
   id: string;
@@ -19,7 +10,6 @@ type FinanceiroItem = {
   dataSaida?: string | null;
   leito: { nome: string; tipo?: 'N' | 'I' } | null;
   pet: { peso?: number | null; tutor: { nome: string; telefone: string } } | null;
-  medicacoes: MedicacaoCobrada[];
   financeiro: {
     diarias: number;
     valorDiaria: number;
@@ -27,7 +17,6 @@ type FinanceiroItem = {
     faixaDescricao?: string;
     peso: number;
     tipoLeito: string;
-    valorMedicacoes: number;
     valorTotal: number;
     valorPago: number;
     saldo: number;
@@ -51,8 +40,6 @@ export function FechamentoFinanceiroPrint({ item }: { item: FinanceiroItem }) {
     dateStyle: 'short',
     timeStyle: 'short',
   });
-
-  const aplicadas = item.medicacoes.filter((m) => m.dosesAplicadas > 0);
 
   return (
     <div className="space-y-6">
@@ -159,58 +146,6 @@ export function FechamentoFinanceiroPrint({ item }: { item: FinanceiroItem }) {
         </table>
       </div>
 
-      {/* Medicamentos Aplicados */}
-      <div className="print-no-break rounded-xl border border-slate-200 p-4">
-        <div className="flex items-center gap-2 text-moss font-semibold text-sm mb-3">
-          <Pill size={16} />
-          <span>Gastos com Medicamentos Aplicados</span>
-        </div>
-        <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 text-xs text-slate-500">
-            <tr>
-              <th className="py-2 text-left font-semibold">Medicamento</th>
-              <th className="py-2 text-left font-semibold">Dose Unitária</th>
-              <th className="py-2 text-center font-semibold">Doses Aplicadas</th>
-              <th className="py-2 text-right font-semibold">Preço/Dose</th>
-              <th className="py-2 text-right font-semibold">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {aplicadas.length > 0 ? (
-              aplicadas.map((med) => (
-                <tr key={med.id}>
-                  <td className="py-2 font-medium text-slate-800">{med.nome}</td>
-                  <td className="py-2 text-slate-500">
-                    {med.quantidade} {med.unidade}
-                  </td>
-                  <td className="py-2 text-center font-bold text-moss">{med.dosesAplicadas}</td>
-                  <td className="py-2 text-right text-slate-600">{money(med.valorDose)}</td>
-                  <td className="py-2 text-right font-semibold text-slate-800">
-                    {money(med.valorDose * med.dosesAplicadas)}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={5} className="py-4 text-center text-slate-400">
-                  Nenhum medicamento com dose aplicada registrada.
-                </td>
-              </tr>
-            )}
-          </tbody>
-          <tfoot>
-            <tr className="border-t-2 border-slate-300">
-              <td colSpan={4} className="py-3 font-bold text-ink">
-                Subtotal Medicações
-              </td>
-              <td className="py-3 text-right font-bold text-moss text-base">
-                {money(item.financeiro.valorMedicacoes)}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
       {/* Resumo Total */}
       <div className="print-no-break rounded-xl border-2 border-slate-800 p-5">
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-4">
@@ -222,12 +157,6 @@ export function FechamentoFinanceiroPrint({ item }: { item: FinanceiroItem }) {
               <td className="py-2 text-slate-600">Subtotal Leito</td>
               <td className="py-2 text-right font-medium text-slate-800">
                 {money(item.financeiro.valorDiarias)}
-              </td>
-            </tr>
-            <tr>
-              <td className="py-2 text-slate-600">Subtotal Medicações</td>
-              <td className="py-2 text-right font-medium text-slate-800">
-                {money(item.financeiro.valorMedicacoes)}
               </td>
             </tr>
             <tr className="border-t-2 border-slate-400">

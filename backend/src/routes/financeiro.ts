@@ -44,8 +44,9 @@ function resumoFinanceiro(
   const valorDiarias = internacao.baixa ? internacao.valorDiarias : calculoLeito.valorDiarias;
   const faixaDescricao = calculoLeito.faixaDescricao;
 
-  const valorMedicacoes = internacao.medicacoes.reduce((total, medicacao) => total + medicacao.valorDose * medicacao.dosesAplicadas, 0);
-  const valorTotal = valorDiarias + valorMedicacoes;
+  // Medicamentos e materiais NÃO são cobrados do tutor: o valor é apenas custo interno (gestão de custos).
+  const custoMedicacoes = internacao.medicacoes.reduce((total, medicacao) => total + medicacao.valorDose * medicacao.dosesAplicadas, 0);
+  const valorTotal = valorDiarias;
   const valorPago = internacao.pagamentos.reduce((total, pagamento) => total + pagamento.valor, 0);
   return {
     diarias,
@@ -54,7 +55,7 @@ function resumoFinanceiro(
     faixaDescricao,
     peso,
     tipoLeito: calculoLeito.tipoLeito,
-    valorMedicacoes,
+    custoMedicacoes,
     valorTotal,
     valorPago,
     saldo: Math.max(0, valorTotal - valorPago),
@@ -83,10 +84,10 @@ function calcularCobranca(
   const valorDiarias = calculoLeito.valorDiarias;
   const faixaDescricao = calculoLeito.faixaDescricao;
 
-  const valorMedicacoes = internacao.medicacoes.reduce((total, medicacao) => total + medicacao.valorDose * medicacao.dosesAplicadas, 0);
-  const valorTotal = valorDiarias + valorMedicacoes;
+  // Medicamentos e materiais não entram na cobrança (custo interno).
+  const valorTotal = valorDiarias;
   const valorPago = internacao.pagamentos.reduce((total, pagamento) => total + pagamento.valor, 0);
-  return { diarias, valorDiaria, valorDiarias, faixaDescricao, peso, valorMedicacoes, valorTotal, saldo: Math.max(0, valorTotal - valorPago) };
+  return { diarias, valorDiaria, valorDiarias, faixaDescricao, peso, valorTotal, saldo: Math.max(0, valorTotal - valorPago) };
 }
 
 export const financeiroRoutes = new Hono()

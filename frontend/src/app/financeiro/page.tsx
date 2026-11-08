@@ -1,12 +1,11 @@
 'use client';
 
 import { FormEvent, useEffect, useState } from 'react';
-import { WalletCards, BedDouble, Pill, CheckCircle2, AlertCircle, Printer } from 'lucide-react';
+import { WalletCards, BedDouble, CheckCircle2, AlertCircle, Printer } from 'lucide-react';
 import { PrintModal } from '@/components/print-modal';
 import { FechamentoFinanceiroPrint } from '@/components/financeiro/fechamento-print';
 
 type FormaPagamento = { id: string; nome: string };
-type MedicacaoCobrada = { id: string; nome: string; quantidade: number; unidade: string; valorDose: number; dosesAplicadas: number };
 type ItemFinanceiro = {
   id: string;
   petNome: string;
@@ -16,7 +15,6 @@ type ItemFinanceiro = {
   dataSaida?: string | null;
   leito: { nome: string; tipo?: 'N' | 'I' } | null;
   pet: { peso?: number | null; tutor: { nome: string; telefone: string } } | null;
-  medicacoes: MedicacaoCobrada[];
   financeiro: {
     diarias: number;
     valorDiaria: number;
@@ -24,7 +22,7 @@ type ItemFinanceiro = {
     faixaDescricao?: string;
     peso: number;
     tipoLeito: string;
-    valorMedicacoes: number;
+    custoMedicacoes: number;
     valorTotal: number;
     valorPago: number;
     saldo: number;
@@ -100,7 +98,7 @@ export default function FinanceiroPage() {
             Extrato de Gastos da Internação
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            Detalhamento transparente do consumo de medicamentos e da diária de leito cobrada pelo peso do animal (fração de até 24h).
+            Detalhamento da diária de leito cobrada pelo peso do animal (fração de até 24h). Medicamentos e materiais não são cobrados do tutor.
           </p>
         </div>
 
@@ -182,7 +180,7 @@ export default function FinanceiroPage() {
                 </div>
 
                 <div className="text-right flex flex-col items-end gap-2">
-                  <span className="text-xs uppercase text-slate-400">Total Gasto na Internação</span>
+                  <span className="text-xs uppercase text-slate-400">Total a Pagar na Internação</span>
                   <p className="text-2xl font-bold text-ink">{money(item.financeiro.valorTotal)}</p>
                   <button
                     onClick={() => setPrintId(item.id)}
@@ -194,8 +192,8 @@ export default function FinanceiroPage() {
                 </div>
               </div>
 
-              {/* Grid com Extrato do Leito e Medicações */}
-              <div className="mt-5 grid gap-6 lg:grid-cols-2">
+              {/* Extrato do Leito */}
+              <div className="mt-5">
                 {/* Bloco 1: Detalhamento do Leito por Peso */}
                 <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
                   <div className="flex items-center gap-2 text-moss font-semibold text-sm mb-3">
@@ -231,27 +229,13 @@ export default function FinanceiroPage() {
                   </div>
                 </div>
 
-                {/* Bloco 2: Medicações Aplicadas */}
-                <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4">
-                  <div className="flex items-center gap-2 text-moss font-semibold text-sm mb-3">
-                    <Pill size={16} />
-                    <span>Gastos com Medicamentos Aplicados</span>
-                  </div>
-
-                  <MedicacoesAplicadas medicacoes={item.medicacoes} />
-                  
-                  <div className="mt-3 flex justify-between pt-2 border-t border-slate-200/60 text-sm font-bold text-ink">
-                    <span>Subtotal Medicações:</span>
-                    <span className="text-moss">{money(item.financeiro.valorMedicacoes)}</span>
-                  </div>
-                </div>
               </div>
 
               {/* Bloco 3: Resumo de Pagamento e Quitação */}
               <div className="mt-5 border-t border-slate-100 pt-4 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-6 text-sm">
                   <div>
-                    <span className="text-xs text-slate-400 block">Total Consumido</span>
+                    <span className="text-xs text-slate-400 block">Total Cobrado</span>
                     <strong className="text-base text-ink">{money(item.financeiro.valorTotal)}</strong>
                   </div>
                   <div>
@@ -350,19 +334,19 @@ function BalancoTabela({ itens }: { itens: ItemFinanceiro[] }) {
   const total = itens.reduce(
     (acc, item) => ({
       leito: acc.leito + item.financeiro.valorDiarias,
-      medicacoes: acc.medicacoes + item.financeiro.valorMedicacoes,
+      custo: acc.custo + item.financeiro.custoMedicacoes,
       gasto: acc.gasto + item.financeiro.valorTotal,
       pago: acc.pago + item.financeiro.valorPago,
       saldo: acc.saldo + item.financeiro.saldo,
     }),
-    { leito: 0, medicacoes: 0, gasto: 0, pago: 0, saldo: 0 }
+    { leito: 0, custo: 0, gasto: 0, pago: 0, saldo: 0 }
   );
 
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <span className="text-xs uppercase text-slate-400">Total Gasto (a receber)</span>
+          <span className="text-xs uppercase text-slate-400">Total a Receber (diárias)</span>
           <p className="text-2xl font-bold text-ink">{money(total.gasto)}</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -373,6 +357,10 @@ function BalancoTabela({ itens }: { itens: ItemFinanceiro[] }) {
           <span className="text-xs uppercase text-slate-400">Saldo em Aberto</span>
           <p className="text-2xl font-bold text-amber-600">{money(total.saldo)}</p>
         </div>
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 shadow-sm sm:col-span-3">
+          <span className="text-xs uppercase text-slate-400">Custo interno com medicamentos e materiais (não cobrado do tutor)</span>
+          <p className="text-2xl font-bold text-slate-700">{money(total.custo)}</p>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -382,10 +370,10 @@ function BalancoTabela({ itens }: { itens: ItemFinanceiro[] }) {
               <th className="px-4 py-3 font-semibold">Pet / Tutor</th>
               <th className="px-4 py-3 font-semibold">Situação</th>
               <th className="px-4 py-3 text-right font-semibold">Leito</th>
-              <th className="px-4 py-3 text-right font-semibold">Medicamentos</th>
-              <th className="px-4 py-3 text-right font-semibold">Total Gasto</th>
+                            <th className="px-4 py-3 text-right font-semibold">Total Cobrado</th>
               <th className="px-4 py-3 text-right font-semibold">Pago</th>
               <th className="px-4 py-3 text-right font-semibold">Saldo</th>
+              <th className="px-4 py-3 text-right font-semibold text-slate-400">Custo interno (medic./mat.)</th>
             </tr>
           </thead>
           <tbody>
@@ -397,12 +385,12 @@ function BalancoTabela({ itens }: { itens: ItemFinanceiro[] }) {
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-600">{item.financeiro.encerrada ? 'Encerrada' : 'Em internação'}</td>
                 <td className="px-4 py-3 text-right">{money(item.financeiro.valorDiarias)}</td>
-                <td className="px-4 py-3 text-right">{money(item.financeiro.valorMedicacoes)}</td>
                 <td className="px-4 py-3 text-right font-semibold text-ink">{money(item.financeiro.valorTotal)}</td>
                 <td className="px-4 py-3 text-right text-emerald-600">{money(item.financeiro.valorPago)}</td>
                 <td className={`px-4 py-3 text-right font-semibold ${item.financeiro.saldo > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
                   {money(item.financeiro.saldo)}
                 </td>
+                <td className="px-4 py-3 text-right text-slate-500">{money(item.financeiro.custoMedicacoes)}</td>
               </tr>
             ))}
             {itens.length === 0 && (
@@ -418,58 +406,15 @@ function BalancoTabela({ itens }: { itens: ItemFinanceiro[] }) {
               <tr>
                 <td className="px-4 py-3" colSpan={2}>Total</td>
                 <td className="px-4 py-3 text-right">{money(total.leito)}</td>
-                <td className="px-4 py-3 text-right">{money(total.medicacoes)}</td>
                 <td className="px-4 py-3 text-right">{money(total.gasto)}</td>
                 <td className="px-4 py-3 text-right text-emerald-600">{money(total.pago)}</td>
                 <td className="px-4 py-3 text-right text-amber-600">{money(total.saldo)}</td>
+                <td className="px-4 py-3 text-right text-slate-500">{money(total.custo)}</td>
               </tr>
             </tfoot>
           )}
         </table>
       </div>
-    </div>
-  );
-}
-
-function MedicacoesAplicadas({ medicacoes }: { medicacoes: MedicacaoCobrada[] }) {
-  const aplicadas = medicacoes.filter((medicacao) => medicacao.dosesAplicadas > 0);
-  return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-      <table className="w-full text-left text-xs">
-        <thead className="bg-slate-50 text-slate-500 border-b border-slate-100">
-          <tr>
-            <th className="px-3 py-2 font-semibold">Medicamento</th>
-            <th className="px-3 py-2 font-semibold">Dose Unitária</th>
-            <th className="px-3 py-2 font-semibold text-center">Doses Aplicadas</th>
-            <th className="px-3 py-2 text-right font-semibold">Preço/Dose</th>
-            <th className="px-3 py-2 text-right font-semibold">Total</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {aplicadas.map((medicacao) => (
-            <tr key={medicacao.id} className="hover:bg-slate-50/50">
-              <td className="px-3 py-2 font-medium text-slate-800">{medicacao.nome}</td>
-              <td className="px-3 py-2 text-slate-500">
-                {medicacao.quantidade} {medicacao.unidade}
-              </td>
-              <td className="px-3 py-2 text-center font-bold text-moss">
-                {medicacao.dosesAplicadas}
-              </td>
-              <td className="px-3 py-2 text-right text-slate-600">{money(medicacao.valorDose)}</td>
-              <td className="px-3 py-2 text-right font-semibold text-slate-800">
-                {money(medicacao.valorDose * medicacao.dosesAplicadas)}
-              </td>
-            </tr>
-          ))}
-          {aplicadas.length === 0 && (
-            <tr>
-              <td colSpan={5} className="px-3 py-4 text-center text-slate-400">
-                Nenhum medicamento com dose aplicada registrada.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
     </div>
   );
 }

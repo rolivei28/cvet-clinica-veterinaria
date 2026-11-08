@@ -190,6 +190,8 @@ function TabelaMedicacoes({ internacao, onAtualizar }: { internacao: Internacao;
   }
 
   async function remover(medId: string) {
+    const nome = internacao.medicacoes.find((med) => med.id === medId)?.nome ?? '';
+    if (!window.confirm(`Remover a medicação ${nome}? Esta ação não pode ser desfeita.`)) return;
     setSalvando(medId);
     const resposta = await fetch(`/api/internacoes/${internacao.id}/medicacoes/${medId}`, { method: 'DELETE' });
     if (resposta.ok) onAtualizar(internacao.medicacoes.filter((med) => med.id !== medId));
@@ -198,7 +200,7 @@ function TabelaMedicacoes({ internacao, onAtualizar }: { internacao: Internacao;
 
   return <div className="rounded-md border border-slate-200 bg-white p-4">
     <div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-semibold text-slate-800">Medicações de {internacao.petNome}</h3><span className="text-xs text-slate-500">{internacao.medicacoes.length} registrada(s)</span></div>
-    <table className="w-full min-w-[1120px] text-left text-xs"><thead className="text-slate-500"><tr><th className="pb-2">Medicamento</th><th className="pb-2">Descrição livre</th><th className="pb-2">Quantidade</th><th className="pb-2">Unidade</th><th className="pb-2">Via</th><th className="pb-2">Valor/dose</th><th className="pb-2">Aplicadas</th><th className="pb-2">Primeira dose</th><th className="pb-2">Frequência</th><th className="w-20 pb-2"><span className="sr-only">Ações</span></th></tr></thead>
+    <table className="w-full min-w-[1120px] text-left text-xs"><thead className="text-slate-500"><tr><th className="pb-2">Medicamento</th><th className="pb-2">Descrição livre</th><th className="pb-2">Quantidade</th><th className="pb-2">Unidade</th><th className="pb-2">Via</th><th className="pb-2">Custo/dose (interno)</th><th className="pb-2">Aplicadas</th><th className="pb-2">Primeira dose</th><th className="pb-2">Frequência</th><th className="w-20 pb-2"><span className="sr-only">Ações</span></th></tr></thead>
       <tbody className="divide-y divide-slate-100">
         {internacao.medicacoes.map((med) => <LinhaMedicacao key={med.id} medicacao={med} salvando={salvando === med.id} onEditar={editarLocal} onSalvar={() => salvar(med, med.id)} onRemover={() => remover(med.id)} />)}
         <LinhaMedicacao medicacao={novaMedicacao} salvando={salvando === 'nova'} nova onEditar={(_, campo, valor) => setNovaMedicacao((atual) => ({ ...atual, [campo]: valor }))} onSalvar={() => salvar(novaMedicacao)} />
