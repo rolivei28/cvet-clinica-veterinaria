@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { LayoutDashboard, BedDouble, BarChart3, Menu, X, Stethoscope, CalendarClock, UsersRound, WalletCards, UserCog, SlidersHorizontal, PackageSearch } from 'lucide-react';
+import { LayoutDashboard, BedDouble, BarChart3, Menu, X, Stethoscope, CalendarClock, UsersRound, WalletCards, UserCog, SlidersHorizontal, PackageSearch, LogOut } from 'lucide-react';
 
 const navItems = [
   { href: '/',               label: 'Início',            icon: LayoutDashboard },
@@ -20,7 +20,14 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  function handleLogout() {
+    localStorage.removeItem('cvet-user');
+    setMobileOpen(false);
+    router.replace('/login');
+  }
 
   const navContent = (
     <nav className="flex flex-1 flex-col gap-1 px-3">
@@ -63,8 +70,19 @@ export function Sidebar() {
       {/* Nav links */}
       {navContent}
 
+      {/* Logout */}
+      <div className="mt-4 px-3">
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <LogOut size={18} strokeWidth={1.8} />
+          Sair
+        </button>
+      </div>
+
       {/* Footer badge */}
-      <div className="mt-4 px-5">
+      <div className="mt-2 px-5">
         <span className="inline-block rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-medium text-slate-400">
           MVP · Projeto UNIVESP
         </span>
