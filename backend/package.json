@@ -5,6 +5,7 @@
   "scripts": {
     "setup": "npm install && (test -f .env || cp .env.example .env)",
     "dev": "npx prisma generate && node scripts/init-db.mjs && tsx watch src/index.ts",
+    "dev:env": "npx prisma generate && node --env-file=.env scripts/init-db.mjs && tsx watch --env-file=.env src/index.ts",
     "start": "tsx src/index.ts",
     "db:init": "node scripts/init-db.mjs",
     "db:seed-demo": "node scripts/seed-demo.mjs",

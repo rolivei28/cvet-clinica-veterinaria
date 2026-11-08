@@ -1,0 +1,64 @@
+# Ambiente de desenvolvimento com hot reload.
+# Uso: docker compose -f docker-compose.dev.yml up
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: cvet-db-dev
+    environment:
+      POSTGRES_USER: cvet
+      POSTGRES_PASSWORD: cvet
+      POSTGRES_DB: cvet
+    ports:
+      - "5432:5432"
+    volumes:
+      - cvet-db-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cvet -d cvet"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: node:22-alpine
+    container_name: cvet-api-dev
+    working_dir: /app
+    # npm run dev: prisma generate + init-db + tsx watch (recarrega ao salvar)
+    command: sh -c "npm install --legacy-peer-deps && npm run dev"
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://cvet:cvet@db:5432/cvet
+    volumes:
+      - ./backend:/app
+      - api-node-modules:/app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: node:22-alpine
+    container_name: cvet-web-dev
+    working_dir: /app
+    # next dev: Fast Refresh (hot reload) no navegador
+    command: sh -c "npm install && npm run dev -- --hostname 0.0.0.0"
+    ports:
+      - "3000:3000"
+    environment:
+      API_URL: http://api:3001
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Bind mounts no macOS/Windows nem sempre propagam eventos de arquivo
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ./frontend:/app
+      - web-node-modules:/app/node_modules
+      - web-next-cache:/app/.next
+    depends_on:
+      - api
+
+volumes:
+  cvet-db-dev:
+  api-node-modules:
+  web-node-modules:
+  web-next-cache:

@@ -53,6 +53,19 @@ O volume `cvet-db` preserva os dados. Para remover também o banco local, use `d
 
 ---
 
+### Desenvolvimento com hot reload (Docker)
+
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+O código de `backend/` e `frontend/` é montado nos containers: o backend reinicia
+(`tsx watch`) e o frontend atualiza no navegador (Fast Refresh) ao salvar arquivos.
+Na primeira subida o `npm install` roda dentro dos containers e pode demorar.
+Use `docker compose -f docker-compose.dev.yml down -v` para limpar volumes e banco.
+
+---
+
 ### Rodando localmente (sem Docker)
 
 **Backend**
